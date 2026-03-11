@@ -1,512 +1,487 @@
-import { useState, useMemo } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Co-Founder Equity Simulator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f0e2a; font-family: Inter, sans-serif; color: #e2e8f0; }
+    input[type=range] { width: 100%; cursor: pointer; }
+    input[type=checkbox] { cursor: pointer; }
+    table { border-collapse: collapse; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+    const ROUNDS = ["Pre-Seed", "Seed", "Series A", "Series B", "Series C"];
+    const F_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6"];
+    const POOL_COLOR = "#94a3b8";
+    const INV_COLORS = ["#22d3ee","#84cc16","#fb923c","#e879f9","#38bdf8"];
 
-const ROUNDS = ["Pre-Seed", "Seed", "Series A", "Series B", "Series C"];
-const F_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6"];
-const POOL_COLOR = "#94a3b8";
-const INV_COLORS = ["#22d3ee","#84cc16","#fb923c","#e879f9","#38bdf8"];
+    const pct = (n) => (n * 100).toFixed(1) + "%";
+    const fmtM = (n) => {
+      if (n == null || isNaN(n) || n === 0) return "—";
+      if (n >= 1000) return `$${(n / 1000).toFixed(1)}B`;
+      if (n >= 1) return `$${n.toFixed(1)}M`;
+      return `$${(n * 1000).toFixed(0)}K`;
+    };
 
-const pct = (n) => (n * 100).toFixed(1) + "%";
-const fmtM = (n) => {
-  if (n == null || isNaN(n) || n === 0) return "—";
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}B`;
-  if (n >= 1) return `$${n.toFixed(1)}M`;
-  return `$${(n * 1000).toFixed(0)}K`;
-};
+    const PieChart = ({ slices }) => {
+      const total = slices.reduce((s, x) => s + x.value, 0);
+      if (total <= 0) return null;
+      let cum = 0;
+      return (
+        <svg viewBox="0 0 100 100" style={{ width: "100%", maxWidth: 180 }}>
+          {slices.map(({ value, color }, i) => {
+            if (value / total < 0.001) return null;
+            const frac = value / total;
+            const a1 = (cum * 360 - 90) * (Math.PI / 180);
+            cum += frac;
+            const a2 = (cum * 360 - 90) * (Math.PI / 180);
+            const x1 = 50 + 42 * Math.cos(a1), y1 = 50 + 42 * Math.sin(a1);
+            const x2 = 50 + 42 * Math.cos(a2), y2 = 50 + 42 * Math.sin(a2);
+            return <path key={i} d={`M50,50 L${x1},${y1} A42,42 0 ${frac > 0.5 ? 1 : 0},1 ${x2},${y2} Z`}
+              fill={color} stroke="#0f0e2a" strokeWidth="1" />;
+          })}
+          <circle cx="50" cy="50" r="24" fill="#0f0e2a" />
+        </svg>
+      );
+    };
 
-// ── PIE CHART ─────────────────────────────────────────────────
-const PieChart = ({ slices }) => {
-  const total = slices.reduce((s, x) => s + x.value, 0);
-  if (total <= 0) return null;
-  let cum = 0;
-  return (
-    <svg viewBox="0 0 100 100" style={{ width: "100%", maxWidth: 180 }}>
-      {slices.map(({ value, color }, i) => {
-        if (value / total < 0.001) return null;
-        const frac = value / total;
-        const a1 = (cum * 360 - 90) * (Math.PI / 180);
-        cum += frac;
-        const a2 = (cum * 360 - 90) * (Math.PI / 180);
-        const x1 = 50 + 42 * Math.cos(a1), y1 = 50 + 42 * Math.sin(a1);
-        const x2 = 50 + 42 * Math.cos(a2), y2 = 50 + 42 * Math.sin(a2);
-        return <path key={i} d={`M50,50 L${x1},${y1} A42,42 0 ${frac > 0.5 ? 1 : 0},1 ${x2},${y2} Z`}
-          fill={color} stroke="#0f0e2a" strokeWidth="1" />;
-      })}
-      <circle cx="50" cy="50" r="24" fill="#0f0e2a" />
-    </svg>
-  );
-};
-
-// ── BAR: founder $ value across rounds ────────────────────────
-const DollarBar = ({ rows, founderIdx, color, exitVal, founderName }) => {
-  const vals = [
-    ...rows.map(r => ({ label: r.round, v: r.founderDollarValues?.[founderIdx] ?? 0 })),
-    { label: "Exit", v: (rows[rows.length - 1].founderPcts[founderIdx] ?? 0) * exitVal },
-  ].filter(x => x.v > 0);
-  if (vals.length < 2) return null;
-  const max = Math.max(...vals.map(x => x.v));
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 6 }}>{founderName}</div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
-        {vals.map((x, i) => (
-          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <div style={{ fontSize: 9, color: "#94a3b8", textAlign: "center" }}>{fmtM(x.v)}</div>
-            <div style={{ width: "100%", background: i === vals.length - 1 ? color : `${color}88`, borderRadius: "4px 4px 0 0", height: `${Math.max(4, (x.v / max) * 64)}px`, transition: "height .3s" }} />
-            <div style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", whiteSpace: "nowrap" }}>{x.label === "Founding" ? "Start" : x.label}</div>
+    const DollarBar = ({ rows, founderIdx, color, exitVal, founderName }) => {
+      const vals = [
+        ...rows.map(r => ({ label: r.round, v: r.founderDollarValues?.[founderIdx] ?? 0 })),
+        { label: "Exit", v: (rows[rows.length - 1].founderPcts[founderIdx] ?? 0) * exitVal },
+      ].filter(x => x.v > 0);
+      if (vals.length < 2) return null;
+      const max = Math.max(...vals.map(x => x.v));
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 6 }}>{founderName}</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
+            {vals.map((x, i) => (
+              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                <div style={{ fontSize: 9, color: "#94a3b8", textAlign: "center" }}>{fmtM(x.v)}</div>
+                <div style={{ width: "100%", background: i === vals.length - 1 ? color : `${color}88`, borderRadius: "4px 4px 0 0", height: `${Math.max(4, (x.v / max) * 64)}px` }} />
+                <div style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", whiteSpace: "nowrap" }}>{x.label === "Founding" ? "Start" : x.label}</div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+      );
+    };
+
+    const Slider = ({ label, value, min, max, step, onChange, color, display }) => (
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
+          <span style={{ color: "#94a3b8" }}>{label}</span>
+          <b style={{ color: color || "#e2e8f0" }}>{display ?? value}</b>
+        </div>
+        <input type="range" min={min} max={max} step={step} value={value}
+          onChange={e => onChange(parseFloat(e.target.value))}
+          style={{ accentColor: color || "#a78bfa" }} />
       </div>
-    </div>
-  );
-};
+    );
 
-const Slider = ({ label, value, min, max, step, onChange, color, display }) => (
-  <div style={{ marginBottom: 10 }}>
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
-      <span style={{ color: "#94a3b8" }}>{label}</span>
-      <b style={{ color: color || "#e2e8f0" }}>{display ?? value}</b>
-    </div>
-    <input type="range" min={min} max={max} step={step} value={value}
-      onChange={e => onChange(parseFloat(e.target.value))}
-      style={{ width: "100%", accentColor: color || "#a78bfa" }} />
-  </div>
-);
+    const defaultRounds = {
+      "Pre-Seed": { raise: 0.5, preMoney: 3 },
+      "Seed":     { raise: 2,   preMoney: 8 },
+      "Series A": { raise: 8,   preMoney: 24 },
+      "Series B": { raise: 25,  preMoney: 75 },
+      "Series C": { raise: 60,  preMoney: 180 },
+    };
 
-const defaultRounds = {
-  "Pre-Seed": { raise: 0.5, preMoney: 3 },
-  "Seed":     { raise: 2,   preMoney: 8 },
-  "Series A": { raise: 8,   preMoney: 24 },
-  "Series B": { raise: 25,  preMoney: 75 },
-  "Series C": { raise: 60,  preMoney: 180 },
-};
-
-const card = (children, extra = {}) => ({
-  background: "#1a1840", borderRadius: 12, padding: "1.25rem",
-  border: "1px solid #2d2b5e", ...extra
-});
-
-export default function App() {
-  const [numFounders, setNumFounders] = useState(2);
-  const [founders, setFounders] = useState([
-    { name: "Founder 1", pct: 45 },
-    { name: "Founder 2", pct: 45 },
-  ]);
-  const [poolPct, setPoolPct] = useState(10);
-  const [activeRounds, setActiveRounds] = useState(Object.fromEntries(ROUNDS.map(r => [r, false])));
-  const [roundData, setRoundData] = useState(defaultRounds);
-  const [exitVal, setExitVal] = useState(100);
-  const [tab, setTab] = useState("setup");
-
-  const setRound = (r, f, v) => setRoundData(p => ({ ...p, [r]: { ...p[r], [f]: v } }));
-
-  const updateFounderCount = (n) => {
-    n = Math.max(1, Math.min(6, n));
-    setNumFounders(n);
-    setFounders(p => Array.from({ length: n }, (_, i) => p[i] || { name: `Founder ${i + 1}`, pct: 0 }));
-  };
-
-  const totalFounderPct = founders.slice(0, numFounders).reduce((s, f) => s + f.pct, 0);
-  const remaining = parseFloat((100 - totalFounderPct - poolPct).toFixed(1));
-
-  // ── SIMULATION ────────────────────────────────────────────────
-  // Rule: investor % = raise / postMoney  (of post-money shares)
-  // All existing holders dilute by factor = preMoney / postMoney = 1 - investorPct
-  // Founder $ value at any point = founderPct × companyValuation
-  // Starting valuation = post-money of FIRST active round (as per user preference)
-  const sim = useMemo(() => {
-    const enabledRounds = ROUNDS.filter(r => activeRounds[r]);
-    const initFounderPcts = founders.slice(0, numFounders).map(f => f.pct / 100);
-    const initPool = poolPct / 100;
-
-    let curFounders = [...initFounderPcts];
-    let curPool = initPool;
-    let curInvSlices = []; // [{round, pct, color}]
-    const rows = [];
-
-    // Founding row — dollar value derived from first round's pre-money
-    rows.push({
-      round: "Founding",
-      founderPcts: [...curFounders],
-      poolPct: curPool,
-      investorSlices: [],
-      totalInvestorPct: 0,
-      raise: null, preMoney: null, postMoney: null,
-      founderDollarValues: null, // filled after we know first round
-      poolDollar: null,
+    const card = (extra = {}) => ({
+      background: "#1a1840", borderRadius: 12, padding: "1.25rem",
+      border: "1px solid #2d2b5e", ...extra
     });
 
-    for (let ri = 0; ri < enabledRounds.length; ri++) {
-      const r = enabledRounds[ri];
-      const { raise, preMoney } = roundData[r];
-      const postMoney = preMoney + raise;
-      const dilFactor = preMoney / postMoney;   // = 1 - raise/postMoney
-      const newInvPct = raise / postMoney;
+    function App() {
+      const [numFounders, setNumFounders] = useState(2);
+      const [founders, setFounders] = useState([
+        { name: "Founder 1", pct: 45 },
+        { name: "Founder 2", pct: 45 },
+      ]);
+      const [poolPct, setPoolPct] = useState(10);
+      const [activeRounds, setActiveRounds] = useState(Object.fromEntries(ROUNDS.map(r => [r, false])));
+      const [roundData, setRoundData] = useState(defaultRounds);
+      const [exitVal, setExitVal] = useState(100);
+      const [tab, setTab] = useState("setup");
 
-      curFounders = curFounders.map(s => s * dilFactor);
-      curPool = curPool * dilFactor;
-      curInvSlices = curInvSlices.map(s => ({ ...s, pct: s.pct * dilFactor }));
-      curInvSlices.push({ round: r, pct: newInvPct, color: INV_COLORS[ri % INV_COLORS.length] });
+      const setRound = (r, f, v) => setRoundData(p => ({ ...p, [r]: { ...p[r], [f]: v } }));
 
-      rows.push({
-        round: r,
-        founderPcts: [...curFounders],
-        poolPct: curPool,
-        investorSlices: curInvSlices.map(x => ({ ...x })),
-        totalInvestorPct: curInvSlices.reduce((s, x) => s + x.pct, 0),
-        raise, preMoney, postMoney,
-        founderDollarValues: curFounders.map(fp => fp * postMoney),
-        poolDollar: curPool * postMoney,
-      });
-    }
+      const updateFounderCount = (n) => {
+        n = Math.max(1, Math.min(6, n));
+        setNumFounders(n);
+        setFounders(p => Array.from({ length: n }, (_, i) => p[i] || { name: `Founder ${i + 1}`, pct: 0 }));
+      };
 
-    // Backfill founding row: use first round's PRE-money as the starting valuation
-    if (rows.length > 1) {
-      const firstRound = rows[1];
-      rows[0].founderDollarValues = initFounderPcts.map(fp => fp * firstRound.preMoney);
-      rows[0].poolDollar = initPool * firstRound.preMoney;
-      rows[0].postMoney = firstRound.preMoney; // display as "company value at founding"
-    }
+      const totalFounderPct = founders.slice(0, numFounders).reduce((s, f) => s + f.pct, 0);
+      const remaining = parseFloat((100 - totalFounderPct - poolPct).toFixed(1));
 
-    return rows;
-  }, [founders, numFounders, poolPct, activeRounds, roundData]);
+      const sim = useMemo(() => {
+        const enabledRounds = ROUNDS.filter(r => activeRounds[r]);
+        const initFounderPcts = founders.slice(0, numFounders).map(f => f.pct / 100);
+        const initPool = poolPct / 100;
+        let curFounders = [...initFounderPcts];
+        let curPool = initPool;
+        let curInvSlices = [];
+        const rows = [];
 
-  const lastRow = sim[sim.length - 1];
-  const firstActiveRound = sim.find(r => r.preMoney != null && r.round !== "Founding");
-  const hasRounds = sim.length > 1;
+        rows.push({
+          round: "Founding", founderPcts: [...curFounders], poolPct: curPool,
+          investorSlices: [], totalInvestorPct: 0,
+          raise: null, preMoney: null, postMoney: null,
+          founderDollarValues: null, poolDollar: null,
+        });
 
-  const pieslices = [
-    ...lastRow.founderPcts.map((s, i) => ({ label: founders[i]?.name || `F${i+1}`, value: s, color: F_COLORS[i] })),
-    { label: "Pool", value: lastRow.poolPct, color: POOL_COLOR },
-    ...(lastRow.investorSlices || []).map(s => ({ label: s.round, value: s.pct, color: s.color })),
-  ].filter(s => s.value > 0.001);
+        for (let ri = 0; ri < enabledRounds.length; ri++) {
+          const r = enabledRounds[ri];
+          const { raise, preMoney } = roundData[r];
+          const postMoney = preMoney + raise;
+          const dilFactor = preMoney / postMoney;
+          const newInvPct = raise / postMoney;
+          curFounders = curFounders.map(s => s * dilFactor);
+          curPool = curPool * dilFactor;
+          curInvSlices = curInvSlices.map(s => ({ ...s, pct: s.pct * dilFactor }));
+          curInvSlices.push({ round: r, pct: newInvPct, color: INV_COLORS[ri % INV_COLORS.length] });
+          rows.push({
+            round: r, founderPcts: [...curFounders], poolPct: curPool,
+            investorSlices: curInvSlices.map(x => ({ ...x })),
+            totalInvestorPct: curInvSlices.reduce((s, x) => s + x.pct, 0),
+            raise, preMoney, postMoney,
+            founderDollarValues: curFounders.map(fp => fp * postMoney),
+            poolDollar: curPool * postMoney,
+          });
+        }
 
-  // ── TAB BUTTON ────────────────────────────────────────────────
-  const Tab = ({ id, label }) => (
-    <button onClick={() => setTab(id)} style={{
-      padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer",
-      fontWeight: 700, fontSize: 13,
-      background: tab === id ? "#6366f1" : "#1a1840",
-      color: tab === id ? "#fff" : "#94a3b8",
-    }}>{label}</button>
-  );
+        if (rows.length > 1) {
+          const firstRound = rows[1];
+          rows[0].founderDollarValues = initFounderPcts.map(fp => fp * firstRound.preMoney);
+          rows[0].poolDollar = initPool * firstRound.preMoney;
+          rows[0].postMoney = firstRound.preMoney;
+        }
+        return rows;
+      }, [founders, numFounders, poolPct, activeRounds, roundData]);
 
-  // ── RENDER ────────────────────────────────────────────────────
-  return (
-    <div style={{ background: "#0f0e2a", minHeight: "100vh", color: "#e2e8f0", fontFamily: "Inter,sans-serif", padding: 16 }}>
-      <div style={{ maxWidth: 980, margin: "0 auto" }}>
+      const lastRow = sim[sim.length - 1];
+      const firstActiveRound = sim.find(r => r.preMoney != null && r.round !== "Founding");
+      const hasRounds = sim.length > 1;
 
-        <h1 style={{ color: "#a78bfa", fontSize: 24, fontWeight: 800, margin: "0 0 4px" }}>Co-Founder Equity & $ Simulator</h1>
-        <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16 }}>
-          Starting point: post-money of your first round &nbsp;·&nbsp; Dilution % is derived automatically from Pre-Money + Raise
-        </p>
+      const pieslices = [
+        ...lastRow.founderPcts.map((s, i) => ({ label: founders[i]?.name || `F${i+1}`, value: s, color: F_COLORS[i] })),
+        { label: "Pool", value: lastRow.poolPct, color: POOL_COLOR },
+        ...(lastRow.investorSlices || []).map(s => ({ label: s.round, value: s.pct, color: s.color })),
+      ].filter(s => s.value > 0.001);
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          <Tab id="setup" label="⚙️ Setup" />
-          <Tab id="money" label="💰 My $ Value" />
-          <Tab id="table" label="📊 Cap Table" />
-        </div>
+      const Tab = ({ id, label }) => (
+        <button onClick={() => setTab(id)} style={{
+          padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer",
+          fontWeight: 700, fontSize: 13,
+          background: tab === id ? "#6366f1" : "#1a1840",
+          color: tab === id ? "#fff" : "#94a3b8",
+        }}>{label}</button>
+      );
 
-        {/* ════════════ SETUP ════════════ */}
-        {tab === "setup" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            {/* Left: founders + pool */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={card()}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                  <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: 0 }}>Co-Founders</h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button onClick={() => updateFounderCount(numFounders - 1)} style={{ background: "#312e81", border: "none", color: "#a78bfa", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 15 }}>−</button>
-                    <b style={{ color: "#a78bfa" }}>{numFounders}</b>
-                    <button onClick={() => updateFounderCount(numFounders + 1)} style={{ background: "#312e81", border: "none", color: "#a78bfa", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 15 }}>+</button>
-                  </div>
-                </div>
-                {founders.slice(0, numFounders).map((f, i) => (
-                  <div key={i} style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                      <div style={{ width: 11, height: 11, borderRadius: "50%", background: F_COLORS[i], flexShrink: 0 }} />
-                      <input value={f.name} onChange={e => { const n = [...founders]; n[i] = { ...n[i], name: e.target.value }; setFounders(n); }}
-                        style={{ background: "transparent", border: "none", color: "#e2e8f0", fontWeight: 600, fontSize: 13, outline: "none", flex: 1 }} />
-                      <b style={{ color: F_COLORS[i], fontSize: 13 }}>{f.pct.toFixed(1)}%</b>
-                    </div>
-                    <input type="range" min={0} max={100} step={0.5} value={f.pct}
-                      onChange={e => { const n = [...founders]; n[i] = { ...n[i], pct: parseFloat(e.target.value) }; setFounders(n); }}
-                      style={{ width: "100%", accentColor: F_COLORS[i] }} />
-                  </div>
-                ))}
-                <div style={{ padding: "5px 10px", borderRadius: 7, fontSize: 12, marginTop: 4, background: remaining < -0.5 ? "#7f1d1d" : remaining > 0.5 ? "#1c2a1e" : "#1e3a2f" }}>
-                  {remaining < -0.5 ? `⚠️ Over by ${Math.abs(remaining).toFixed(1)}%` : remaining > 0.5 ? `ℹ️ ${remaining.toFixed(1)}% unallocated` : "✅ Fully allocated"}
-                </div>
-              </div>
-
-              <div style={card()}>
-                <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 10px" }}>Employee / Advisory Pool</h2>
-                <Slider label="Option Pool %" value={poolPct} min={0} max={25} step={0.5} onChange={setPoolPct} color={POOL_COLOR} display={`${poolPct.toFixed(1)}%`} />
-              </div>
+      return (
+        <div style={{ minHeight: "100vh", padding: 16 }}>
+          <div style={{ maxWidth: 980, margin: "0 auto" }}>
+            <h1 style={{ color: "#a78bfa", fontSize: 24, fontWeight: 800, margin: "0 0 4px" }}>Co-Founder Equity & $ Simulator</h1>
+            <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16 }}>Starting point: post-money of your first round · Dilution % derived from Pre-Money + Raise</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              <Tab id="setup" label="⚙️ Setup" />
+              <Tab id="money" label="💰 My $ Value" />
+              <Tab id="table" label="📊 Cap Table" />
             </div>
 
-            {/* Right: rounds */}
-            <div style={card()}>
-              <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>Funding Rounds</h2>
-              <p style={{ color: "#64748b", fontSize: 11, marginBottom: 14 }}>
-                Investor % = Raise ÷ Post-Money &nbsp;·&nbsp; Everyone else dilutes by Pre ÷ Post
-              </p>
-              {ROUNDS.map((r, ri) => {
-                const { raise, preMoney } = roundData[r];
-                const post = preMoney + raise;
-                const invPct = raise / post;
-                const color = INV_COLORS[ri];
-                return (
-                  <div key={r} style={{ marginBottom: 16, opacity: activeRounds[r] ? 1 : 0.4 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: activeRounds[r] ? 8 : 0 }}>
-                      <input type="checkbox" checked={activeRounds[r]} id={`r-${r}`}
-                        onChange={e => setActiveRounds(p => ({ ...p, [r]: e.target.checked }))}
-                        style={{ accentColor: "#a78bfa", width: 14, height: 14 }} />
-                      <label htmlFor={`r-${r}`} style={{ fontWeight: 700, cursor: "pointer", flex: 1, color: "#c4b5fd", fontSize: 14 }}>{r}</label>
-                      {activeRounds[r] && (
-                        <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
-                          <span style={{ color: "#fbbf24" }}>{fmtM(preMoney)} pre</span>
-                          <span style={{ color: "#34d399" }}>+{fmtM(raise)}</span>
-                          <span style={{ color: "#60a5fa" }}>{fmtM(post)} post</span>
-                          <span style={{ color: "#f87171" }}>{pct(invPct)} inv</span>
-                        </div>
-                      )}
-                    </div>
-                    {activeRounds[r] && (
-                      <div style={{ paddingLeft: 22 }}>
-                        <Slider label="Pre-Money Valuation" value={preMoney}
-                          min={0.1}
-                          max={r==="Pre-Seed"?15:r==="Seed"?60:r==="Series A"?250:r==="Series B"?600:1200}
-                          step={0.1}
-                          onChange={v => setRound(r, "preMoney", v)} color="#fbbf24" display={fmtM(preMoney)} />
-                        <Slider label="Amount Raised" value={raise}
-                          min={0.1}
-                          max={r==="Pre-Seed"?5:r==="Seed"?15:r==="Series A"?50:r==="Series B"?150:300}
-                          step={0.1}
-                          onChange={v => setRound(r, "raise", v)} color="#34d399" display={fmtM(raise)} />
+            {/* SETUP */}
+            {tab === "setup" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={card()}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                      <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: 0 }}>Co-Founders</h2>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button onClick={() => updateFounderCount(numFounders - 1)} style={{ background: "#312e81", border: "none", color: "#a78bfa", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 15 }}>−</button>
+                        <b style={{ color: "#a78bfa" }}>{numFounders}</b>
+                        <button onClick={() => updateFounderCount(numFounders + 1)} style={{ background: "#312e81", border: "none", color: "#a78bfa", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 15 }}>+</button>
                       </div>
-                    )}
+                    </div>
+                    {founders.slice(0, numFounders).map((f, i) => (
+                      <div key={i} style={{ marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                          <div style={{ width: 11, height: 11, borderRadius: "50%", background: F_COLORS[i], flexShrink: 0 }} />
+                          <input value={f.name} onChange={e => { const n = [...founders]; n[i] = { ...n[i], name: e.target.value }; setFounders(n); }}
+                            style={{ background: "transparent", border: "none", color: "#e2e8f0", fontWeight: 600, fontSize: 13, outline: "none", flex: 1 }} />
+                          <b style={{ color: F_COLORS[i], fontSize: 13 }}>{f.pct.toFixed(1)}%</b>
+                        </div>
+                        <input type="range" min={0} max={100} step={0.5} value={f.pct}
+                          onChange={e => { const n = [...founders]; n[i] = { ...n[i], pct: parseFloat(e.target.value) }; setFounders(n); }}
+                          style={{ width: "100%", accentColor: F_COLORS[i] }} />
+                      </div>
+                    ))}
+                    <div style={{ padding: "5px 10px", borderRadius: 7, fontSize: 12, marginTop: 4, background: remaining < -0.5 ? "#7f1d1d" : remaining > 0.5 ? "#1c2a1e" : "#1e3a2f" }}>
+                      {remaining < -0.5 ? `⚠️ Over by ${Math.abs(remaining).toFixed(1)}%` : remaining > 0.5 ? `ℹ️ ${remaining.toFixed(1)}% unallocated` : "✅ Fully allocated"}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                  <div style={card()}>
+                    <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 10px" }}>Employee / Advisory Pool</h2>
+                    <Slider label="Option Pool %" value={poolPct} min={0} max={25} step={0.5} onChange={setPoolPct} color={POOL_COLOR} display={`${poolPct.toFixed(1)}%`} />
+                  </div>
+                </div>
 
-        {/* ════════════ MONEY ════════════ */}
-        {tab === "money" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {!hasRounds && (
-              <div style={{ ...card(), textAlign: "center", color: "#64748b", padding: "2.5rem" }}>
-                Enable at least one funding round in Setup to see your dollar value.
+                <div style={card()}>
+                  <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>Funding Rounds</h2>
+                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 14 }}>Investor % = Raise ÷ Post-Money · Everyone else dilutes by Pre ÷ Post</p>
+                  {ROUNDS.map((r, ri) => {
+                    const { raise, preMoney } = roundData[r];
+                    const post = preMoney + raise;
+                    const invPct = raise / post;
+                    return (
+                      <div key={r} style={{ marginBottom: 16, opacity: activeRounds[r] ? 1 : 0.4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: activeRounds[r] ? 8 : 0 }}>
+                          <input type="checkbox" checked={activeRounds[r]} id={`r-${r}`}
+                            onChange={e => setActiveRounds(p => ({ ...p, [r]: e.target.checked }))}
+                            style={{ accentColor: "#a78bfa", width: 14, height: 14 }} />
+                          <label htmlFor={`r-${r}`} style={{ fontWeight: 700, cursor: "pointer", flex: 1, color: "#c4b5fd", fontSize: 14 }}>{r}</label>
+                          {activeRounds[r] && (
+                            <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
+                              <span style={{ color: "#fbbf24" }}>{fmtM(preMoney)} pre</span>
+                              <span style={{ color: "#34d399" }}>+{fmtM(raise)}</span>
+                              <span style={{ color: "#60a5fa" }}>{fmtM(post)} post</span>
+                              <span style={{ color: "#f87171" }}>{pct(invPct)} inv</span>
+                            </div>
+                          )}
+                        </div>
+                        {activeRounds[r] && (
+                          <div style={{ paddingLeft: 22 }}>
+                            <Slider label="Pre-Money Valuation" value={preMoney} min={0.1}
+                              max={r==="Pre-Seed"?15:r==="Seed"?60:r==="Series A"?250:r==="Series B"?600:1200}
+                              step={0.1} onChange={v => setRound(r, "preMoney", v)} color="#fbbf24" display={fmtM(preMoney)} />
+                            <Slider label="Amount Raised" value={raise} min={0.1}
+                              max={r==="Pre-Seed"?5:r==="Seed"?15:r==="Series A"?50:r==="Series B"?150:300}
+                              step={0.1} onChange={v => setRound(r, "raise", v)} color="#34d399" display={fmtM(raise)} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {hasRounds && <>
-              {/* Exit slider */}
-              <div style={card()}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                  <div>
-                    <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 2px" }}>🚀 Exit / Acquisition Target</h2>
-                    <p style={{ color: "#64748b", fontSize: 11, margin: 0 }}>Set a target company valuation at exit to see everyone's take-home.</p>
+            {/* MONEY */}
+            {tab === "money" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {!hasRounds && (
+                  <div style={{ ...card(), textAlign: "center", color: "#64748b", padding: "2.5rem" }}>
+                    Enable at least one funding round in Setup to see your dollar value.
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: "#a78bfa" }}>{fmtM(exitVal)}</div>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <Slider label="Exit Valuation" value={exitVal} min={5} max={2000} step={5} onChange={setExitVal} color="#a78bfa" display={fmtM(exitVal)} />
-                </div>
-                {/* Exit payout cards */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 4 }}>
-                  {founders.slice(0, numFounders).map((f, i) => (
-                    <div key={i} style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: `1px solid ${F_COLORS[i]}55` }}>
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>{f.name}</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: F_COLORS[i] }}>{fmtM(lastRow.founderPcts[i] * exitVal)}</div>
-                      <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>{pct(lastRow.founderPcts[i])} at exit</div>
+                )}
+                {hasRounds && <>
+                  <div style={card()}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                      <div>
+                        <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 2px" }}>🚀 Exit / Acquisition Target</h2>
+                        <p style={{ color: "#64748b", fontSize: 11 }}>Set a target company valuation at exit to see everyone's take-home.</p>
+                      </div>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: "#a78bfa" }}>{fmtM(exitVal)}</div>
                     </div>
-                  ))}
-                  <div style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: "1px solid #22d3ee55" }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>All Investors</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#22d3ee" }}>{fmtM(lastRow.totalInvestorPct * exitVal)}</div>
-                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>{pct(lastRow.totalInvestorPct)} at exit</div>
+                    <div style={{ marginTop: 12 }}>
+                      <Slider label="Exit Valuation" value={exitVal} min={5} max={2000} step={5} onChange={setExitVal} color="#a78bfa" display={fmtM(exitVal)} />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 4 }}>
+                      {founders.slice(0, numFounders).map((f, i) => (
+                        <div key={i} style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: `1px solid ${F_COLORS[i]}55` }}>
+                          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>{f.name}</div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: F_COLORS[i] }}>{fmtM(lastRow.founderPcts[i] * exitVal)}</div>
+                          <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>{pct(lastRow.founderPcts[i])} at exit</div>
+                        </div>
+                      ))}
+                      <div style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: "1px solid #22d3ee55" }}>
+                        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>All Investors</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#22d3ee" }}>{fmtM(lastRow.totalInvestorPct * exitVal)}</div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>{pct(lastRow.totalInvestorPct)} at exit</div>
+                      </div>
+                      <div style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: `1px solid ${POOL_COLOR}55` }}>
+                        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>Employee Pool</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: POOL_COLOR }}>{fmtM(lastRow.poolPct * exitVal)}</div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>{pct(lastRow.poolPct)} at exit</div>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: `1px solid ${POOL_COLOR}55` }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>Employee Pool</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: POOL_COLOR }}>{fmtM(lastRow.poolPct * exitVal)}</div>
-                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>{pct(lastRow.poolPct)} at exit</div>
+
+                  <div style={card()}>
+                    <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>Your $ Value — Round by Round</h2>
+                    <p style={{ color: "#64748b", fontSize: 11, marginBottom: 14 }}>
+                      Starting point = post-money of {firstActiveRound?.round} ({fmtM(firstActiveRound?.preMoney)} pre · {fmtM(firstActiveRound?.postMoney)} post).
+                    </p>
+                    {founders.slice(0, numFounders).map((f, i) => (
+                      <DollarBar key={i} rows={sim} founderIdx={i} color={F_COLORS[i]} exitVal={exitVal} founderName={f.name} />
+                    ))}
                   </div>
-                </div>
-              </div>
 
-              {/* $ value bars per founder */}
-              <div style={card()}>
-                <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>Your $ Value — Round by Round</h2>
-                <p style={{ color: "#64748b", fontSize: 11, marginBottom: 14 }}>
-                  Starting point = post-money of {firstActiveRound?.round} ({fmtM(firstActiveRound?.preMoney)} pre · {fmtM(firstActiveRound?.postMoney)} post). Your % shrinks but your $ grows as the company value rises.
-                </p>
-                {founders.slice(0, numFounders).map((f, i) => (
-                  <DollarBar key={i} rows={sim} founderIdx={i} color={F_COLORS[i]} exitVal={exitVal} founderName={f.name} />
-                ))}
-              </div>
-
-              {/* Round-by-round detail table */}
-              <div style={card()}>
-                <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}>Round-by-Round Detail</h2>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, whiteSpace: "nowrap" }}>
-                    <thead>
-                      <tr style={{ borderBottom: "2px solid #2d2b5e" }}>
-                        <th style={{ textAlign: "left", padding: "5px 10px", color: "#94a3b8" }}>Round</th>
-                        <th style={{ textAlign: "right", padding: "5px 8px", color: "#60a5fa" }}>Co. Value</th>
-                        <th style={{ textAlign: "right", padding: "5px 8px", color: "#34d399" }}>Raised</th>
-                        {founders.slice(0, numFounders).map((f, i) => (
-                          <th key={i} colSpan={3} style={{ textAlign: "center", padding: "5px 10px", color: F_COLORS[i], borderLeft: "1px solid #2d2b5e" }}>{f.name}</th>
+                  <div style={card({ overflowX: "auto" })}>
+                    <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}>Round-by-Round Detail</h2>
+                    <table style={{ width: "100%", fontSize: 12, whiteSpace: "nowrap" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "2px solid #2d2b5e" }}>
+                          <th style={{ textAlign: "left", padding: "5px 10px", color: "#94a3b8" }}>Round</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: "#60a5fa" }}>Co. Value</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: "#34d399" }}>Raised</th>
+                          {founders.slice(0, numFounders).map((f, i) => (
+                            <th key={i} colSpan={3} style={{ textAlign: "center", padding: "5px 10px", color: F_COLORS[i], borderLeft: "1px solid #2d2b5e" }}>{f.name}</th>
+                          ))}
+                        </tr>
+                        <tr style={{ borderBottom: "1px solid #2d2b5e" }}>
+                          <th /><th /><th />
+                          {founders.slice(0, numFounders).map((_, i) => (
+                            <React.Fragment key={i}>
+                              <th style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10, borderLeft: "1px solid #2d2b5e" }}>Ownership</th>
+                              <th style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10 }}>$ Value</th>
+                              <th style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10 }}>Δ $</th>
+                            </React.Fragment>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sim.map((row, ri) => (
+                          <tr key={ri} style={{ borderBottom: "1px solid #1e1b4b", background: ri % 2 ? "#13112a" : "transparent" }}>
+                            <td style={{ padding: "6px 10px", fontWeight: 700, color: ri === 0 ? "#a78bfa" : "#e2e8f0" }}>{row.round}</td>
+                            <td style={{ textAlign: "right", padding: "6px 8px", color: "#60a5fa", fontWeight: 700 }}>{fmtM(row.postMoney)}</td>
+                            <td style={{ textAlign: "right", padding: "6px 8px", color: "#34d399" }}>{fmtM(row.raise)}</td>
+                            {row.founderPcts.map((fp, i) => {
+                              const cur = row.founderDollarValues?.[i];
+                              const prev = ri > 0 ? sim[ri - 1].founderDollarValues?.[i] : null;
+                              const delta = cur != null && prev != null ? cur - prev : null;
+                              return (
+                                <React.Fragment key={i}>
+                                  <td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], borderLeft: "1px solid #1e1b4b" }}>{pct(fp)}</td>
+                                  <td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], fontWeight: 700 }}>{fmtM(cur)}</td>
+                                  <td style={{ textAlign: "right", padding: "6px 6px", fontSize: 11, color: delta == null ? "#64748b" : delta >= 0 ? "#34d399" : "#f87171" }}>
+                                    {delta == null ? "—" : `${delta >= 0 ? "▲" : "▼"}${fmtM(Math.abs(delta))}`}
+                                  </td>
+                                </React.Fragment>
+                              );
+                            })}
+                          </tr>
                         ))}
-                      </tr>
-                      <tr style={{ borderBottom: "1px solid #2d2b5e" }}>
-                        <th /><th /><th />
-                        {founders.slice(0, numFounders).map((_, i) => (
-                          <>
-                            <th key={`a${i}`} style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10, borderLeft: "1px solid #2d2b5e" }}>Ownership</th>
-                            <th key={`b${i}`} style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10 }}>$ Value</th>
-                            <th key={`c${i}`} style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10 }}>Δ $</th>
-                          </>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sim.map((row, ri) => (
-                        <tr key={ri} style={{ borderBottom: "1px solid #1e1b4b", background: ri % 2 ? "#13112a" : "transparent" }}>
-                          <td style={{ padding: "6px 10px", fontWeight: 700, color: ri === 0 ? "#a78bfa" : "#e2e8f0" }}>{row.round}</td>
-                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#60a5fa", fontWeight: 700 }}>{fmtM(row.postMoney)}</td>
-                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#34d399" }}>{fmtM(row.raise)}</td>
-                          {row.founderPcts.map((fp, i) => {
-                            const cur = row.founderDollarValues?.[i];
-                            const prev = ri > 0 ? sim[ri - 1].founderDollarValues?.[i] : null;
-                            const delta = cur != null && prev != null ? cur - prev : null;
+                        <tr style={{ borderTop: "2px solid #a78bfa", background: "#1e1b4b" }}>
+                          <td style={{ padding: "6px 10px", fontWeight: 800, color: "#a78bfa" }}>🚀 Exit</td>
+                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#a78bfa", fontWeight: 800 }}>{fmtM(exitVal)}</td>
+                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#64748b" }}>—</td>
+                          {lastRow.founderPcts.map((fp, i) => {
+                            const cur = fp * exitVal;
+                            const prev = lastRow.founderDollarValues?.[i];
+                            const delta = prev != null ? cur - prev : null;
                             return (
-                              <>
-                                <td key={`p${i}`} style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], borderLeft: "1px solid #1e1b4b" }}>{pct(fp)}</td>
-                                <td key={`v${i}`} style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], fontWeight: 700 }}>{fmtM(cur)}</td>
-                                <td key={`d${i}`} style={{ textAlign: "right", padding: "6px 6px", fontSize: 11, color: delta == null ? "#64748b" : delta >= 0 ? "#34d399" : "#f87171" }}>
+                              <React.Fragment key={i}>
+                                <td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], borderLeft: "1px solid #1e1b4b" }}>{pct(fp)}</td>
+                                <td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], fontWeight: 800 }}>{fmtM(cur)}</td>
+                                <td style={{ textAlign: "right", padding: "6px 6px", fontSize: 11, color: delta == null ? "#64748b" : delta >= 0 ? "#34d399" : "#f87171" }}>
                                   {delta == null ? "—" : `${delta >= 0 ? "▲" : "▼"}${fmtM(Math.abs(delta))}`}
                                 </td>
-                              </>
+                              </React.Fragment>
                             );
                           })}
                         </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>}
+              </div>
+            )}
+
+            {/* CAP TABLE */}
+            {tab === "table" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "start" }}>
+                  <div style={card()}>
+                    <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 14, margin: "0 0 8px" }}>Final Ownership</h2>
+                    <PieChart slices={pieslices} />
+                    <div style={{ marginTop: 10 }}>
+                      {pieslices.map((s, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginBottom: 4 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                          <span style={{ color: "#cbd5e1", flex: 1 }}>{s.label}</span>
+                          <span style={{ color: "#e2e8f0", fontWeight: 700 }}>{pct(s.value)}</span>
+                        </div>
                       ))}
-                      {/* Exit row */}
-                      <tr style={{ borderTop: "2px solid #a78bfa", background: "#1e1b4b" }}>
-                        <td style={{ padding: "6px 10px", fontWeight: 800, color: "#a78bfa" }}>🚀 Exit</td>
-                        <td style={{ textAlign: "right", padding: "6px 8px", color: "#a78bfa", fontWeight: 800 }}>{fmtM(exitVal)}</td>
-                        <td style={{ textAlign: "right", padding: "6px 8px", color: "#64748b" }}>—</td>
-                        {lastRow.founderPcts.map((fp, i) => {
-                          const cur = fp * exitVal;
-                          const prev = lastRow.founderDollarValues?.[i];
-                          const delta = prev != null ? cur - prev : null;
+                    </div>
+                  </div>
+                  <div style={card({ overflowX: "auto" })}>
+                    <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}>Ownership % After Each Round</h2>
+                    <table style={{ width: "100%", fontSize: 12, whiteSpace: "nowrap" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "2px solid #2d2b5e" }}>
+                          <th style={{ textAlign: "left", padding: "5px 10px", color: "#94a3b8" }}>Round</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: "#fbbf24" }}>Pre-$</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: "#34d399" }}>Raise</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: "#60a5fa" }}>Post-$</th>
+                          {founders.slice(0, numFounders).map((f, i) => (
+                            <th key={i} style={{ textAlign: "right", padding: "5px 8px", color: F_COLORS[i] }}>{f.name.split(" ")[0]}</th>
+                          ))}
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: POOL_COLOR }}>Pool</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: "#22d3ee" }}>Investors</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px", color: "#f87171" }}>Founder Dil.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sim.map((row, ri) => {
+                          const initPctSum = founders.slice(0, numFounders).reduce((s, f) => s + f.pct / 100, 0);
+                          const curPctSum = row.founderPcts.reduce((s, p) => s + p, 0);
+                          const cumDil = initPctSum > 0 ? 1 - curPctSum / initPctSum : 0;
                           return (
-                            <>
-                              <td key={`ep${i}`} style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], borderLeft: "1px solid #1e1b4b" }}>{pct(fp)}</td>
-                              <td key={`ev${i}`} style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], fontWeight: 800 }}>{fmtM(cur)}</td>
-                              <td key={`ed${i}`} style={{ textAlign: "right", padding: "6px 6px", fontSize: 11, color: delta == null ? "#64748b" : delta >= 0 ? "#34d399" : "#f87171" }}>
-                                {delta == null ? "—" : `${delta >= 0 ? "▲" : "▼"}${fmtM(Math.abs(delta))}`}
+                            <tr key={ri} style={{ borderBottom: "1px solid #1e1b4b", background: ri % 2 ? "#13112a" : "transparent" }}>
+                              <td style={{ padding: "6px 10px", fontWeight: 700, color: ri === 0 ? "#a78bfa" : "#e2e8f0" }}>{row.round}</td>
+                              <td style={{ textAlign: "right", padding: "6px 8px", color: "#fbbf24" }}>{row.preMoney != null ? fmtM(row.preMoney) : "—"}</td>
+                              <td style={{ textAlign: "right", padding: "6px 8px", color: "#34d399" }}>{row.raise ? fmtM(row.raise) : "—"}</td>
+                              <td style={{ textAlign: "right", padding: "6px 8px", color: "#60a5fa", fontWeight: 700 }}>{fmtM(row.postMoney)}</td>
+                              {row.founderPcts.map((fp, i) => (
+                                <td key={i} style={{ textAlign: "right", padding: "6px 8px", color: F_COLORS[i], fontWeight: 600 }}>{pct(fp)}</td>
+                              ))}
+                              <td style={{ textAlign: "right", padding: "6px 8px", color: POOL_COLOR }}>{pct(row.poolPct)}</td>
+                              <td style={{ textAlign: "right", padding: "6px 8px", color: "#22d3ee" }}>{pct(row.totalInvestorPct || 0)}</td>
+                              <td style={{ textAlign: "right", padding: "6px 8px", fontWeight: 700, color: cumDil > 0.4 ? "#f87171" : cumDil > 0 ? "#fbbf24" : "#64748b" }}>
+                                {ri === 0 ? "—" : pct(cumDil)}
                               </td>
-                            </>
+                            </tr>
                           );
                         })}
-                      </tr>
-                    </tbody>
-                  </table>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            </>}
-          </div>
-        )}
-
-        {/* ════════════ CAP TABLE ════════════ */}
-        {tab === "table" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "start" }}>
-              {/* Pie */}
-              <div style={card()}>
-                <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 14, margin: "0 0 8px" }}>Final Ownership</h2>
-                <PieChart slices={pieslices} />
-                <div style={{ marginTop: 10 }}>
-                  {pieslices.map((s, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginBottom: 4 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: 2, background: s.color, flexShrink: 0 }} />
-                      <span style={{ color: "#cbd5e1", flex: 1 }}>{s.label}</span>
-                      <span style={{ color: "#e2e8f0", fontWeight: 700 }}>{pct(s.value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Full table */}
-              <div style={card({ overflowX: "auto" })}>
-                <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}>Ownership % After Each Round</h2>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, whiteSpace: "nowrap" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #2d2b5e" }}>
-                      <th style={{ textAlign: "left", padding: "5px 10px", color: "#94a3b8" }}>Round</th>
-                      <th style={{ textAlign: "right", padding: "5px 8px", color: "#fbbf24" }}>Pre-$</th>
-                      <th style={{ textAlign: "right", padding: "5px 8px", color: "#34d399" }}>Raise</th>
-                      <th style={{ textAlign: "right", padding: "5px 8px", color: "#60a5fa" }}>Post-$</th>
-                      {founders.slice(0, numFounders).map((f, i) => (
-                        <th key={i} style={{ textAlign: "right", padding: "5px 8px", color: F_COLORS[i] }}>{f.name.split(" ")[0]}</th>
+                {lastRow.investorSlices?.length > 0 && (
+                  <div style={card()}>
+                    <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}>Investor Breakdown (Final State)</h2>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {lastRow.investorSlices.map((s, i) => (
+                        <div key={i} style={{ background: "#13112a", borderRadius: 10, padding: "12px 16px", border: `1px solid ${s.color}55`, minWidth: 150 }}>
+                          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>{s.round} investors</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{pct(s.pct)}</div>
+                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
+                            {fmtM(s.pct * (lastRow.postMoney ?? 0))} current · {fmtM(s.pct * exitVal)} at exit
+                          </div>
+                        </div>
                       ))}
-                      <th style={{ textAlign: "right", padding: "5px 8px", color: POOL_COLOR }}>Pool</th>
-                      <th style={{ textAlign: "right", padding: "5px 8px", color: "#22d3ee" }}>Investors</th>
-                      <th style={{ textAlign: "right", padding: "5px 8px", color: "#f87171" }}>Founder Dil.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sim.map((row, ri) => {
-                      const initPctSum = founders.slice(0, numFounders).reduce((s, f) => s + f.pct / 100, 0);
-                      const curPctSum = row.founderPcts.reduce((s, p) => s + p, 0);
-                      const cumDil = initPctSum > 0 ? 1 - curPctSum / initPctSum : 0;
-                      return (
-                        <tr key={ri} style={{ borderBottom: "1px solid #1e1b4b", background: ri % 2 ? "#13112a" : "transparent" }}>
-                          <td style={{ padding: "6px 10px", fontWeight: 700, color: ri === 0 ? "#a78bfa" : "#e2e8f0" }}>{row.round}</td>
-                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#fbbf24" }}>{row.preMoney != null ? fmtM(row.preMoney) : "—"}</td>
-                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#34d399" }}>{row.raise ? fmtM(row.raise) : "—"}</td>
-                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#60a5fa", fontWeight: 700 }}>{fmtM(row.postMoney)}</td>
-                          {row.founderPcts.map((fp, i) => (
-                            <td key={i} style={{ textAlign: "right", padding: "6px 8px", color: F_COLORS[i], fontWeight: 600 }}>{pct(fp)}</td>
-                          ))}
-                          <td style={{ textAlign: "right", padding: "6px 8px", color: POOL_COLOR }}>{pct(row.poolPct)}</td>
-                          <td style={{ textAlign: "right", padding: "6px 8px", color: "#22d3ee" }}>{pct(row.totalInvestorPct || 0)}</td>
-                          <td style={{ textAlign: "right", padding: "6px 8px", fontWeight: 700, color: cumDil > 0.4 ? "#f87171" : cumDil > 0 ? "#fbbf24" : "#64748b" }}>
-                            {ri === 0 ? "—" : pct(cumDil)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Investor slices */}
-            {lastRow.investorSlices?.length > 0 && (
-              <div style={card()}>
-                <h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}>Investor Breakdown (Final State)</h2>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {lastRow.investorSlices.map((s, i) => (
-                    <div key={i} style={{ background: "#13112a", borderRadius: 10, padding: "12px 16px", border: `1px solid ${s.color}55`, minWidth: 150 }}>
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>{s.round} investors</div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{pct(s.pct)}</div>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
-                        {fmtM(s.pct * (lastRow.postMoney ?? 0))} current · {fmtM(s.pct * exitVal)} at exit
-                      </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
