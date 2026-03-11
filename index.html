@@ -1,0 +1,504 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.4">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta charset="UTF-8" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"/&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;title&gt;Co-Founder Equity Simulator&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>* { box-sizing: border-box; margin: 0; padding: 0; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>body { background: #0f0e2a; font-family: Inter, sans-serif; color: #e2e8f0; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>input[type=range] { width: 100%; cursor: pointer; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>input[type=checkbox] { cursor: pointer; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>table { border-collapse: collapse; }</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;div id="root"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script type="text/babel"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const { useState, useMemo } = React;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const ROUNDS = ["Pre-Seed", "Seed", "Series A", "Series B", "Series C"];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const F_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6"];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const POOL_COLOR = "#94a3b8";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const INV_COLORS = ["#22d3ee","#84cc16","#fb923c","#e879f9","#38bdf8"];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const pct = (n) =&gt; (n * 100).toFixed(1) + "%";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const fmtM = (n) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (n == null || isNaN(n) || n === 0) return "—";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (n &gt;= 1000) return `$${(n / 1000).toFixed(1)}B`;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (n &gt;= 1) return `$${n.toFixed(1)}M`;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return `$${(n * 1000).toFixed(0)}K`;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const PieChart = ({ slices }) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const total = slices.reduce((s, x) =&gt; s + x.value, 0);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (total &lt;= 0) return null;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let cum = 0;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;svg viewBox="0 0 100 100" style={{ width: "100%", maxWidth: 180 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>{slices.map(({ value, color }, i) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (value / total &lt; 0.001) return null;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const frac = value / total;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const a1 = (cum * 360 - 90) * (Math.PI / 180);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cum += frac;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const a2 = (cum * 360 - 90) * (Math.PI / 180);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const x1 = 50 + 42 * Math.cos(a1), y1 = 50 + 42 * Math.sin(a1);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const x2 = 50 + 42 * Math.cos(a2), y2 = 50 + 42 * Math.sin(a2);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return &lt;path key={i} d={`M50,50 L${x1},${y1} A42,42 0 ${frac &gt; 0.5 ? 1 : 0},1 ${x2},${y2} Z`}</p>
+<p class="p1"><span class="Apple-converted-space">              </span>fill={color} stroke="#0f0e2a" strokeWidth="1" /&gt;;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;circle cx="50" cy="50" r="24" fill="#0f0e2a" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const DollarBar = ({ rows, founderIdx, color, exitVal, founderName }) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const vals = [</p>
+<p class="p1"><span class="Apple-converted-space">        </span>...rows.map(r =&gt; ({ label: r.round, v: r.founderDollarValues?.[founderIdx] ?? 0 })),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ label: "Exit", v: (rows[rows.length - 1].founderPcts[founderIdx] ?? 0) * exitVal },</p>
+<p class="p1"><span class="Apple-converted-space">      </span>].filter(x =&gt; x.v &gt; 0);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (vals.length &lt; 2) return null;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const max = Math.max(...vals.map(x =&gt; x.v));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ marginBottom: 16 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 6 }}&gt;{founderName}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{vals.map((x, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 9, color: "#94a3b8", textAlign: "center" }}&gt;{fmtM(x.v)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ width: "100%", background: i === vals.length - 1 ? color : `${color}88`, borderRadius: "4px 4px 0 0", height: `${Math.max(4, (x.v / max) * 64)}px` }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", whiteSpace: "nowrap" }}&gt;{x.label === "Founding" ? "Start" : x.label}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const Slider = ({ label, value, min, max, step, onChange, color, display }) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div style={{ marginBottom: 10 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;span style={{ color: "#94a3b8" }}&gt;{label}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;b style={{ color: color || "#e2e8f0" }}&gt;{display ?? value}&lt;/b&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;input type="range" min={min} max={max} step={step} value={value}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>onChange={e =&gt; onChange(parseFloat(e.target.value))}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>style={{ accentColor: color || "#a78bfa" }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const defaultRounds = {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>"Pre-Seed": { raise: 0.5, preMoney: 3 },</p>
+<p class="p1"><span class="Apple-converted-space">      </span>"Seed": <span class="Apple-converted-space">    </span>{ raise: 2, <span class="Apple-converted-space">  </span>preMoney: 8 },</p>
+<p class="p1"><span class="Apple-converted-space">      </span>"Series A": { raise: 8, <span class="Apple-converted-space">  </span>preMoney: 24 },</p>
+<p class="p1"><span class="Apple-converted-space">      </span>"Series B": { raise: 25,<span class="Apple-converted-space">  </span>preMoney: 75 },</p>
+<p class="p1"><span class="Apple-converted-space">      </span>"Series C": { raise: 60,<span class="Apple-converted-space">  </span>preMoney: 180 },</p>
+<p class="p1"><span class="Apple-converted-space">    </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const card = (extra = {}) =&gt; ({</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: "#1a1840", borderRadius: 12, padding: "1.25rem",</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: "1px solid #2d2b5e", ...extra</p>
+<p class="p1"><span class="Apple-converted-space">    </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function App() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [numFounders, setNumFounders] = useState(2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [founders, setFounders] = useState([</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ name: "Founder 1", pct: 45 },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ name: "Founder 2", pct: 45 },</p>
+<p class="p1"><span class="Apple-converted-space">      </span>]);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [poolPct, setPoolPct] = useState(10);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [activeRounds, setActiveRounds] = useState(Object.fromEntries(ROUNDS.map(r =&gt; [r, false])));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [roundData, setRoundData] = useState(defaultRounds);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [exitVal, setExitVal] = useState(100);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [tab, setTab] = useState("setup");</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const setRound = (r, f, v) =&gt; setRoundData(p =&gt; ({ ...p, [r]: { ...p[r], [f]: v } }));</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const updateFounderCount = (n) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>n = Math.max(1, Math.min(6, n));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>setNumFounders(n);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>setFounders(p =&gt; Array.from({ length: n }, (_, i) =&gt; p[i] || { name: `Founder ${i + 1}`, pct: 0 }));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const totalFounderPct = founders.slice(0, numFounders).reduce((s, f) =&gt; s + f.pct, 0);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const remaining = parseFloat((100 - totalFounderPct - poolPct).toFixed(1));</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const sim = useMemo(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const enabledRounds = ROUNDS.filter(r =&gt; activeRounds[r]);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const initFounderPcts = founders.slice(0, numFounders).map(f =&gt; f.pct / 100);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const initPool = poolPct / 100;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let curFounders = [...initFounderPcts];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let curPool = initPool;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let curInvSlices = [];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const rows = [];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>rows.push({</p>
+<p class="p1"><span class="Apple-converted-space">          </span>round: "Founding", founderPcts: [...curFounders], poolPct: curPool,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>investorSlices: [], totalInvestorPct: 0,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>raise: null, preMoney: null, postMoney: null,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>founderDollarValues: null, poolDollar: null,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let ri = 0; ri &lt; enabledRounds.length; ri++) {</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const r = enabledRounds[ri];</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const { raise, preMoney } = roundData[r];</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const postMoney = preMoney + raise;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const dilFactor = preMoney / postMoney;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const newInvPct = raise / postMoney;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>curFounders = curFounders.map(s =&gt; s * dilFactor);</p>
+<p class="p1"><span class="Apple-converted-space">          </span>curPool = curPool * dilFactor;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>curInvSlices = curInvSlices.map(s =&gt; ({ ...s, pct: s.pct * dilFactor }));</p>
+<p class="p1"><span class="Apple-converted-space">          </span>curInvSlices.push({ round: r, pct: newInvPct, color: INV_COLORS[ri % INV_COLORS.length] });</p>
+<p class="p1"><span class="Apple-converted-space">          </span>rows.push({</p>
+<p class="p1"><span class="Apple-converted-space">            </span>round: r, founderPcts: [...curFounders], poolPct: curPool,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>investorSlices: curInvSlices.map(x =&gt; ({ ...x })),</p>
+<p class="p1"><span class="Apple-converted-space">            </span>totalInvestorPct: curInvSlices.reduce((s, x) =&gt; s + x.pct, 0),</p>
+<p class="p1"><span class="Apple-converted-space">            </span>raise, preMoney, postMoney,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>founderDollarValues: curFounders.map(fp =&gt; fp * postMoney),</p>
+<p class="p1"><span class="Apple-converted-space">            </span>poolDollar: curPool * postMoney,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (rows.length &gt; 1) {</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const firstRound = rows[1];</p>
+<p class="p1"><span class="Apple-converted-space">          </span>rows[0].founderDollarValues = initFounderPcts.map(fp =&gt; fp * firstRound.preMoney);</p>
+<p class="p1"><span class="Apple-converted-space">          </span>rows[0].poolDollar = initPool * firstRound.preMoney;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>rows[0].postMoney = firstRound.preMoney;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return rows;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}, [founders, numFounders, poolPct, activeRounds, roundData]);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const lastRow = sim[sim.length - 1];</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const firstActiveRound = sim.find(r =&gt; r.preMoney != null &amp;&amp; r.round !== "Founding");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const hasRounds = sim.length &gt; 1;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const pieslices = [</p>
+<p class="p1"><span class="Apple-converted-space">        </span>...lastRow.founderPcts.map((s, i) =&gt; ({ label: founders[i]?.name || `F${i+1}`, value: s, color: F_COLORS[i] })),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ label: "Pool", value: lastRow.poolPct, color: POOL_COLOR },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>...(lastRow.investorSlices || []).map(s =&gt; ({ label: s.round, value: s.pct, color: s.color })),</p>
+<p class="p1"><span class="Apple-converted-space">      </span>].filter(s =&gt; s.value &gt; 0.001);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const Tab = ({ id, label }) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button onClick={() =&gt; setTab(id)} style={{</p>
+<p class="p1"><span class="Apple-converted-space">          </span>padding: "8px 18px", borderRadius: 8, border: "none", cursor: "pointer",</p>
+<p class="p1"><span class="Apple-converted-space">          </span>fontWeight: 700, fontSize: 13,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>background: tab === id ? "#6366f1" : "#1a1840",</p>
+<p class="p1"><span class="Apple-converted-space">          </span>color: tab === id ? "#fff" : "#94a3b8",</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}}&gt;{label}&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style={{ minHeight: "100vh", padding: 16 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div style={{ maxWidth: 980, margin: "0 auto" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;h1 style={{ color: "#a78bfa", fontSize: 24, fontWeight: 800, margin: "0 0 4px" }}&gt;Co-Founder Equity &amp; $ Simulator&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p style={{ color: "#64748b", fontSize: 12, marginBottom: 16 }}&gt;Starting point: post-money of your first round · Dilution % derived from Pre-Money + Raise&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style={{ display: "flex", gap: 8, marginBottom: 20 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;Tab id="setup" label="⚙️ Setup" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;Tab id="money" label="💰 My $ Value" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;Tab id="table" label="📊 Cap Table" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>{/* SETUP */}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{tab === "setup" &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 12 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card()}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: 0 }}&gt;Co-Founders&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;button onClick={() =&gt; updateFounderCount(numFounders - 1)} style={{ background: "#312e81", border: "none", color: "#a78bfa", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 15 }}&gt;−&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;b style={{ color: "#a78bfa" }}&gt;{numFounders}&lt;/b&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;button onClick={() =&gt; updateFounderCount(numFounders + 1)} style={{ background: "#312e81", border: "none", color: "#a78bfa", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 15 }}&gt;+&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>{founders.slice(0, numFounders).map((f, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div key={i} style={{ marginBottom: 12 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ width: 11, height: 11, borderRadius: "50%", background: F_COLORS[i], flexShrink: 0 }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;input value={f.name} onChange={e =&gt; { const n = [...founders]; n[i] = { ...n[i], name: e.target.value }; setFounders(n); }}</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>style={{ background: "transparent", border: "none", color: "#e2e8f0", fontWeight: 600, fontSize: 13, outline: "none", flex: 1 }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;b style={{ color: F_COLORS[i], fontSize: 13 }}&gt;{f.pct.toFixed(1)}%&lt;/b&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;input type="range" min={0} max={100} step={0.5} value={f.pct}</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>onChange={e =&gt; { const n = [...founders]; n[i] = { ...n[i], pct: parseFloat(e.target.value) }; setFounders(n); }}</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>style={{ width: "100%", accentColor: F_COLORS[i] }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ padding: "5px 10px", borderRadius: 7, fontSize: 12, marginTop: 4, background: remaining &lt; -0.5 ? "#7f1d1d" : remaining &gt; 0.5 ? "#1c2a1e" : "#1e3a2f" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>{remaining &lt; -0.5 ? `⚠️ Over by ${Math.abs(remaining).toFixed(1)}%` : remaining &gt; 0.5 ? `ℹ️ ${remaining.toFixed(1)}% unallocated` : "✅ Fully allocated"}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card()}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 10px" }}&gt;Employee / Advisory Pool&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;Slider label="Option Pool %" value={poolPct} min={0} max={25} step={0.5} onChange={setPoolPct} color={POOL_COLOR} display={`${poolPct.toFixed(1)}%`} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={card()}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}&gt;Funding Rounds&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;p style={{ color: "#64748b", fontSize: 11, marginBottom: 14 }}&gt;Investor % = Raise ÷ Post-Money · Everyone else dilutes by Pre ÷ Post&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>{ROUNDS.map((r, ri) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const { raise, preMoney } = roundData[r];</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const post = preMoney + raise;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const invPct = raise / post;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div key={r} style={{ marginBottom: 16, opacity: activeRounds[r] ? 1 : 0.4 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: activeRounds[r] ? 8 : 0 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;input type="checkbox" checked={activeRounds[r]} id={`r-${r}`}</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>onChange={e =&gt; setActiveRounds(p =&gt; ({ ...p, [r]: e.target.checked }))}</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>style={{ accentColor: "#a78bfa", width: 14, height: 14 }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;label htmlFor={`r-${r}`} style={{ fontWeight: 700, cursor: "pointer", flex: 1, color: "#c4b5fd", fontSize: 14 }}&gt;{r}&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>{activeRounds[r] &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div style={{ display: "flex", gap: 8, fontSize: 11 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;span style={{ color: "#fbbf24" }}&gt;{fmtM(preMoney)} pre&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;span style={{ color: "#34d399" }}&gt;+{fmtM(raise)}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;span style={{ color: "#60a5fa" }}&gt;{fmtM(post)} post&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;span style={{ color: "#f87171" }}&gt;{pct(invPct)} inv&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>{activeRounds[r] &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ paddingLeft: 22 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;Slider label="Pre-Money Valuation" value={preMoney} min={0.1}</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>max={r==="Pre-Seed"?15:r==="Seed"?60:r==="Series A"?250:r==="Series B"?600:1200}</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>step={0.1} onChange={v =&gt; setRound(r, "preMoney", v)} color="#fbbf24" display={fmtM(preMoney)} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;Slider label="Amount Raised" value={raise} min={0.1}</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>max={r==="Pre-Seed"?5:r==="Seed"?15:r==="Series A"?50:r==="Series B"?150:300}</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>step={0.1} onChange={v =&gt; setRound(r, "raise", v)} color="#34d399" display={fmtM(raise)} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>);</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>)}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>{/* MONEY */}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{tab === "money" &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 16 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{!hasRounds &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={{ ...card(), textAlign: "center", color: "#64748b", padding: "2.5rem" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>Enable at least one funding round in Setup to see your dollar value.</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{hasRounds &amp;&amp; &lt;&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card()}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 2px" }}&gt;🚀 Exit / Acquisition Target&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;p style={{ color: "#64748b", fontSize: 11 }}&gt;Set a target company valuation at exit to see everyone's take-home.&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div style={{ fontSize: 28, fontWeight: 800, color: "#a78bfa" }}&gt;{fmtM(exitVal)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ marginTop: 12 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;Slider label="Exit Valuation" value={exitVal} min={5} max={2000} step={5} onChange={setExitVal} color="#a78bfa" display={fmtM(exitVal)} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 4 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>{founders.slice(0, numFounders).map((f, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div key={i} style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: `1px solid ${F_COLORS[i]}55` }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}&gt;{f.name}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ fontSize: 22, fontWeight: 800, color: F_COLORS[i] }}&gt;{fmtM(lastRow.founderPcts[i] * exitVal)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}&gt;{pct(lastRow.founderPcts[i])} at exit&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: "1px solid #22d3ee55" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}&gt;All Investors&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ fontSize: 22, fontWeight: 800, color: "#22d3ee" }}&gt;{fmtM(lastRow.totalInvestorPct * exitVal)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}&gt;{pct(lastRow.totalInvestorPct)} at exit&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div style={{ background: "#13112a", borderRadius: 10, padding: "12px 14px", border: `1px solid ${POOL_COLOR}55` }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}&gt;Employee Pool&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ fontSize: 22, fontWeight: 800, color: POOL_COLOR }}&gt;{fmtM(lastRow.poolPct * exitVal)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}&gt;{pct(lastRow.poolPct)} at exit&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card()}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}&gt;Your $ Value — Round by Round&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;p style={{ color: "#64748b", fontSize: 11, marginBottom: 14 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>Starting point = post-money of {firstActiveRound?.round} ({fmtM(firstActiveRound?.preMoney)} pre · {fmtM(firstActiveRound?.postMoney)} post).</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>{founders.slice(0, numFounders).map((f, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;DollarBar key={i} rows={sim} founderIdx={i} color={F_COLORS[i]} exitVal={exitVal} founderName={f.name} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card({ overflowX: "auto" })}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}&gt;Round-by-Round Detail&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;table style={{ width: "100%", fontSize: 12, whiteSpace: "nowrap" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;tr style={{ borderBottom: "2px solid #2d2b5e" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "left", padding: "5px 10px", color: "#94a3b8" }}&gt;Round&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: "#60a5fa" }}&gt;Co. Value&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: "#34d399" }}&gt;Raised&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>{founders.slice(0, numFounders).map((f, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;th key={i} colSpan={3} style={{ textAlign: "center", padding: "5px 10px", color: F_COLORS[i], borderLeft: "1px solid #2d2b5e" }}&gt;{f.name}&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;tr style={{ borderBottom: "1px solid #2d2b5e" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th /&gt;&lt;th /&gt;&lt;th /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>{founders.slice(0, numFounders).map((_, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;React.Fragment key={i}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;th style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10, borderLeft: "1px solid #2d2b5e" }}&gt;Ownership&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;th style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10 }}&gt;$ Value&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;th style={{ textAlign: "right", padding: "2px 6px", color: "#64748b", fontSize: 10 }}&gt;Δ $&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/React.Fragment&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>{sim.map((row, ri) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;tr key={ri} style={{ borderBottom: "1px solid #1e1b4b", background: ri % 2 ? "#13112a" : "transparent" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;td style={{ padding: "6px 10px", fontWeight: 700, color: ri === 0 ? "#a78bfa" : "#e2e8f0" }}&gt;{row.round}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#60a5fa", fontWeight: 700 }}&gt;{fmtM(row.postMoney)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#34d399" }}&gt;{fmtM(row.raise)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>{row.founderPcts.map((fp, i) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>const cur = row.founderDollarValues?.[i];</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>const prev = ri &gt; 0 ? sim[ri - 1].founderDollarValues?.[i] : null;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>const delta = cur != null &amp;&amp; prev != null ? cur - prev : null;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;React.Fragment key={i}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                  </span>&lt;td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], borderLeft: "1px solid #1e1b4b" }}&gt;{pct(fp)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                  </span>&lt;td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], fontWeight: 700 }}&gt;{fmtM(cur)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                  </span>&lt;td style={{ textAlign: "right", padding: "6px 6px", fontSize: 11, color: delta == null ? "#64748b" : delta &gt;= 0 ? "#34d399" : "#f87171" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                    </span>{delta == null ? "—" : `${delta &gt;= 0 ? "▲" : "▼"}${fmtM(Math.abs(delta))}`}</p>
+<p class="p1"><span class="Apple-converted-space">                                  </span>&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/React.Fragment&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>);</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;tr style={{ borderTop: "2px solid #a78bfa", background: "#1e1b4b" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td style={{ padding: "6px 10px", fontWeight: 800, color: "#a78bfa" }}&gt;🚀 Exit&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#a78bfa", fontWeight: 800 }}&gt;{fmtM(exitVal)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#64748b" }}&gt;—&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>{lastRow.founderPcts.map((fp, i) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>const cur = fp * exitVal;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>const prev = lastRow.founderDollarValues?.[i];</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>const delta = prev != null ? cur - prev : null;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;React.Fragment key={i}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], borderLeft: "1px solid #1e1b4b" }}&gt;{pct(fp)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;td style={{ textAlign: "right", padding: "6px 6px", color: F_COLORS[i], fontWeight: 800 }}&gt;{fmtM(cur)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;td style={{ textAlign: "right", padding: "6px 6px", fontSize: 11, color: delta == null ? "#64748b" : delta &gt;= 0 ? "#34d399" : "#f87171" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                  </span>{delta == null ? "—" : `${delta &gt;= 0 ? "▲" : "▼"}${fmtM(Math.abs(delta))}`}</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;/React.Fragment&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>);</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/table&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>)}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>{/* CAP TABLE */}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{tab === "table" &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 16 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "start" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card()}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 14, margin: "0 0 8px" }}&gt;Final Ownership&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;PieChart slices={pieslices} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ marginTop: 10 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>{pieslices.map((s, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginBottom: 4 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ width: 10, height: 10, borderRadius: 2, background: s.color, flexShrink: 0 }} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;span style={{ color: "#cbd5e1", flex: 1 }}&gt;{s.label}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;span style={{ color: "#e2e8f0", fontWeight: 700 }}&gt;{pct(s.value)}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card({ overflowX: "auto" })}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}&gt;Ownership % After Each Round&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;table style={{ width: "100%", fontSize: 12, whiteSpace: "nowrap" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;tr style={{ borderBottom: "2px solid #2d2b5e" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "left", padding: "5px 10px", color: "#94a3b8" }}&gt;Round&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: "#fbbf24" }}&gt;Pre-$&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: "#34d399" }}&gt;Raise&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: "#60a5fa" }}&gt;Post-$&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>{founders.slice(0, numFounders).map((f, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;th key={i} style={{ textAlign: "right", padding: "5px 8px", color: F_COLORS[i] }}&gt;{f.name.split(" ")[0]}&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: POOL_COLOR }}&gt;Pool&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: "#22d3ee" }}&gt;Investors&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th style={{ textAlign: "right", padding: "5px 8px", color: "#f87171" }}&gt;Founder Dil.&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>{sim.map((row, ri) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>const initPctSum = founders.slice(0, numFounders).reduce((s, f) =&gt; s + f.pct / 100, 0);</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>const curPctSum = row.founderPcts.reduce((s, p) =&gt; s + p, 0);</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>const cumDil = initPctSum &gt; 0 ? 1 - curPctSum / initPctSum : 0;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;tr key={ri} style={{ borderBottom: "1px solid #1e1b4b", background: ri % 2 ? "#13112a" : "transparent" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;td style={{ padding: "6px 10px", fontWeight: 700, color: ri === 0 ? "#a78bfa" : "#e2e8f0" }}&gt;{row.round}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#fbbf24" }}&gt;{row.preMoney != null ? fmtM(row.preMoney) : "—"}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#34d399" }}&gt;{row.raise ? fmtM(row.raise) : "—"}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#60a5fa", fontWeight: 700 }}&gt;{fmtM(row.postMoney)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>{row.founderPcts.map((fp, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;td key={i} style={{ textAlign: "right", padding: "6px 8px", color: F_COLORS[i], fontWeight: 600 }}&gt;{pct(fp)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: POOL_COLOR }}&gt;{pct(row.poolPct)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", color: "#22d3ee" }}&gt;{pct(row.totalInvestorPct || 0)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;td style={{ textAlign: "right", padding: "6px 8px", fontWeight: 700, color: cumDil &gt; 0.4 ? "#f87171" : cumDil &gt; 0 ? "#fbbf24" : "#64748b" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>{ri === 0 ? "—" : pct(cumDil)}</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/table&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{lastRow.investorSlices?.length &gt; 0 &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div style={card()}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;h2 style={{ color: "#c4b5fd", fontWeight: 700, fontSize: 15, margin: "0 0 12px" }}&gt;Investor Breakdown (Final State)&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>{lastRow.investorSlices.map((s, i) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div key={i} style={{ background: "#13112a", borderRadius: 10, padding: "12px 16px", border: `1px solid ${s.color}55`, minWidth: 150 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}&gt;{s.round} investors&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ fontSize: 20, fontWeight: 800, color: s.color }}&gt;{pct(s.pct)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>{fmtM(s.pct * (lastRow.postMoney ?? 0))} current · {fmtM(s.pct * exitVal)} at exit</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>ReactDOM.createRoot(document.getElementById("root")).render(&lt;App /&gt;);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
