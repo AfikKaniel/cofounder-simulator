@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Health ↔ Gamification Spectrum</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #121828;
+  --surface2: #1a2236;
+  --health: #00d4aa;
+  --game: #ff6b35;
+  --mid: #a78bfa;
+  --text: #e8edf5;
+  --text2: #8b95a8;
+  --border: #2a3450;
+  --glow-health: rgba(0,212,170,0.15);
+  --glow-game: rgba(255,107,53,0.15);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.noise {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  opacity: 0.03; pointer-events: none; z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+header {
+  text-align: center;
+  padding: 48px 24px 24px;
+  position: relative;
+}
+
+header h1 {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--health), var(--mid), var(--game));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+header p {
+  color: var(--text2);
+  font-size: 0.95rem;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.spectrum-container {
+  max-width: 1100px;
+  margin: 32px auto;
+  padding: 0 24px;
+}
+
+.spectrum-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 8px;
+}
+
+.spectrum-labels span {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.label-health { color: var(--health); }
+.label-game { color: var(--game); }
+
+.spectrum-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--health), var(--mid) 50%, var(--game));
+  margin-bottom: 80px;
+  box-shadow: 0 0 20px rgba(0,212,170,0.1), 0 0 20px rgba(255,107,53,0.1);
+}
+
+.spectrum-track::before {
+  content: '';
+  position: absolute;
+  top: -4px; left: -4px; right: -4px; bottom: -4px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, var(--health), var(--mid) 50%, var(--game));
+  opacity: 0.15;
+  filter: blur(8px);
+}
+
+.tick-marks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  margin-top: 8px;
+}
+
+.tick-marks span {
+  font-size: 0.65rem;
+  color: var(--text2);
+  opacity: 0.5;
+}
+
+.apps-on-spectrum {
+  position: relative;
+  height: 60px;
+  margin-top: -76px;
+}
+
+.app-dot {
+  position: absolute;
+  transform: translateX(-50%);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+}
+
+.app-dot:hover { z-index: 10; }
+
+.app-dot .dot {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  border: 2px solid var(--border);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.app-dot:hover .dot {
+  transform: scale(1.25);
+  border-color: var(--mid);
+  box-shadow: 0 0 20px rgba(167,139,250,0.3);
+}
+
+.app-dot.active .dot {
+  transform: scale(1.3);
+  border-color: #fff;
+  box-shadow: 0 0 25px rgba(167,139,250,0.5);
+}
+
+.app-dot .name {
+  position: absolute;
+  top: 46px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text2);
+  transition: color 0.3s;
+}
+
+.app-dot:hover .name, .app-dot.active .name { color: var(--text); }
+
+/* Card Grid */
+.cards-section {
+  max-width: 1100px;
+  margin: 60px auto 40px;
+  padding: 0 24px;
+}
+
+.section-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--text2);
+  margin-bottom: 20px;
+  padding-left: 4px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.app-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 12px 12px 0 0;
+  opacity: 0.7;
+}
+
+.app-card:hover {
+  border-color: var(--mid);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+
+.app-card.active {
+  border-color: #fff;
+  box-shadow: 0 8px 40px rgba(167,139,250,0.2);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.card-icon {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.card-header-text h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.card-header-text .tagline {
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+
+.card-position {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.position-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface2);
+  position: relative;
+  overflow: hidden;
+}
+
+.position-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--health), var(--mid), var(--game));
+}
+
+.position-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.card-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.score-item {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.score-item .label {
+  font-size: 0.65rem;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+
+.score-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.score-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.08);
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.score-val {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  min-width: 22px;
+  text-align: right;
+}
+
+.card-tap-hint {
+  font-size: 0.7rem;
+  color: var(--text2);
+  text-align: center;
+  opacity: 0.6;
+}
+
+/* Detail Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 720px;
+  padding: 32px;
+  position: relative;
+  animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-close:hover { background: var(--border); }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.modal-icon {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+}
+
+.modal-header-text h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.modal-header-text .sub {
+  color: var(--text2);
+  font-size: 0.85rem;
+}
+
+.modal-spectrum {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.modal-spectrum-label {
+  font-size: 0.7rem;
+  color: var(--text2);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.modal-spectrum-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--health), var(--mid) 50%, var(--game));
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.modal-spectrum-pin {
+  position: absolute;
+  top: -6px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--mid);
+  transform: translateX(-50%);
+  box-shadow: 0 0 12px rgba(167,139,250,0.5);
+}
+
+.modal-spectrum-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--text2);
+}
+
+.modal-scores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.modal-score-card {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+
+.modal-score-card .num {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.modal-score-card .lbl {
+  font-size: 0.7rem;
+  color: var(--text2);
+}
+
+.modal-section {
+  margin-bottom: 20px;
+}
+
+.modal-section h4 {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--mid);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-section p {
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.modal-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.modal-section li {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 4px 0 4px 16px;
+  position: relative;
+}
+
+.modal-section li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--mid);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.metric-item {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.metric-item .metric-label {
+  font-size: 0.65rem;
+  color: var(--text2);
+  margin-bottom: 2px;
+}
+
+.metric-item .metric-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.tag {
+  display: inline-block;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  color: var(--text2);
+  margin: 2px;
+}
+
+.relevance-box {
+  background: linear-gradient(135deg, rgba(167,139,250,0.08), rgba(0,212,170,0.08));
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.relevance-box h4 {
+  border: none !important;
+  padding: 0 !important;
+  margin-bottom: 8px !important;
+  color: var(--health) !important;
+}
+
+@media (max-width: 600px) {
+  .cards-grid { grid-template-columns: 1fr; }
+  .modal { padding: 20px; }
+  .modal-scores { grid-template-columns: 1fr 1fr; }
+  .metric-grid { grid-template-columns: 1fr; }
+  .app-dot .name { font-size: 0.6rem; }
+}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<header>
+  <h1>Health ↔ Gamification Spectrum</h1>
+  <p>Interactive map of apps blending health tracking with game mechanics — from clinical-grade data tools to playful wellness games. Tap any app for deep-dive analysis.</p>
+</header>
+
+<div class="spectrum-container">
+  <div class="spectrum-labels">
+    <span class="label-health">◈ Pure Health</span>
+    <span class="label-game">Pure Game ◈</span>
+  </div>
+  <div class="spectrum-track"></div>
+  <div class="tick-marks">
+    <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span>
+  </div>
+  <div class="apps-on-spectrum" id="spectrumDots"></div>
+</div>
+
+<div class="cards-section">
+  <div class="section-title">All Apps — Tap for Deep Dive</div>
+  <div class="cards-grid" id="cardsGrid"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+const apps = [
+  {
+    id: "whoop",
+    name: "Whoop",
+    icon: "⌚",
+    color: "#00d4aa",
+    bgColor: "rgba(0,212,170,0.15)",
+    position: 12,
+    tagline: "Performance optimization for athletes",
+    scores: { healthAccuracy: 9.2, gamificationLevel: 2.5, gamifiedFeatures: 3, dataDepth: 9.5 },
+    overview: "Whoop is a wearable fitness band focused on recovery, strain, and sleep tracking. It uses clinical-grade sensors (PPG, accelerometer, skin temp, SpO2) to generate continuous biometric data. The core experience is built around three daily scores: Recovery (0-100%), Strain (0-21 scale), and Sleep Performance (%). There's no screen on the device — everything is app-driven, emphasizing data over distraction.",
+    gamification: [
+      "Strain Coach — real-time strain targets based on recovery score, creating a daily 'optimal zone' goal",
+      "Weekly/Monthly Performance Reports — comparative analytics that create implicit competition against your past self",
+      "Team features — group leaderboards for strain, recovery. Used by pro sports teams (NFL, NBA, NCAA)",
+      "Streak tracking for sleep consistency"
+    ],
+    kpis: "Daily Active Users (DAU), subscription retention (monthly/annual), average HRV improvement over time, Strain adherence rate, community team participation",
+    metrics: {
+      "Monthly Users": "~1.5M+",
+      "Revenue (2024)": "~$300M ARR",
+      "Subscription": "$30/mo or $239/yr",
+      "Retention": "~70% annual",
+      "Funding": "$400M+ raised",
+      "Valuation": "$3.6B (2022)"
+    },
+    healthData: "Extremely accurate — uses 5 LEDs (green + infrared) PPG sensor sampling at 100Hz. Validated in multiple peer-reviewed studies for HRV accuracy within 1-2ms of ECG. Tracks SpO2, skin temperature, respiratory rate. FDA-cleared for some metrics.",
+    relevance: "Whoop proves that deep, clinical-quality data can drive engagement WITHOUT heavy gamification. Their 'Strain Coach' is a subtle gamification win — it turns biometrics into a daily target. Your app could adopt this 'smart goal' approach while layering more explicit game mechanics on top."
+  },
+  {
+    id: "oura",
+    name: "Oura Ring",
+    icon: "💍",
+    color: "#c4b5fd",
+    bgColor: "rgba(196,181,253,0.15)",
+    position: 15,
+    tagline: "Sleep & readiness in a ring",
+    scores: { healthAccuracy: 9.0, gamificationLevel: 2.0, gamifiedFeatures: 2, dataDepth: 8.5 },
+    overview: "Oura Ring is a smart ring that tracks sleep stages, HRV, body temperature, blood oxygen, and activity. Its hallmark is the 'Readiness Score' — a daily 0-100 metric synthesizing overnight recovery data. The form factor (a ring vs. wristband) reduces friction and increases wear compliance. Oura positions itself as a wellness/lifestyle brand rather than a fitness device.",
+    gamification: [
+      "Readiness Score (0-100) — daily score that acts as a simple gamified feedback loop",
+      "Sleep Score with breakdown — creates nightly 'performance' metric",
+      "Tags system — encourages users to log behaviors and discover correlations (self-experimentation loop)",
+      "Trends/streaks for activity goals"
+    ],
+    kpis: "Ring units sold, subscriber growth (post Gen3 subscription model), nightly wear rate, Readiness Score engagement, tag usage frequency",
+    metrics: {
+      "Units Sold": "2.5M+ rings",
+      "Revenue (2024)": "~$400M+",
+      "Subscription": "$5.99/mo (Gen3+)",
+      "Valuation": "$2.55B (2022)",
+      "DAU Rate": "~80% daily wear",
+      "Retention": "~65-70% annual"
+    },
+    healthData: "Very accurate for sleep staging — validated against polysomnography in published studies (94% accuracy for sleep stages). HRV from finger PPG is more accurate than wrist-based due to stronger pulse signal. Temperature trending used to predict illness onset. Recently added blood oxygen and period prediction.",
+    relevance: "Oura's genius is making the ring 'disappear' — near-zero friction = very high daily engagement. The Readiness Score is a masterclass in simple gamification: one number that drives behavior. Your app should consider how to create a single, compelling daily score that users check first thing in the morning."
+  },
+  {
+    id: "strava",
+    name: "Strava",
+    icon: "🏃",
+    color: "#fc4c02",
+    bgColor: "rgba(252,76,2,0.15)",
+    position: 35,
+    tagline: "The social network for athletes",
+    scores: { healthAccuracy: 6.5, gamificationLevel: 7.5, gamifiedFeatures: 8, dataDepth: 6.0 },
+    overview: "Strava is a social fitness platform primarily for runners and cyclists, though it has expanded to 40+ activity types. It combines GPS tracking with a social feed, creating a 'social network for athletes.' Strava's power is in its network effects — your friends' activities show up in your feed, creating social accountability and friendly competition. The platform processes over 40M activities weekly.",
+    gamification: [
+      "Segments — user-created course sections with all-time and personal leaderboards. 'King/Queen of the Mountain' (KOM/QOM) crowns",
+      "Kudos — social likes that create feedback loops",
+      "Challenges — monthly/weekly events with digital badges and prizes from sponsor brands",
+      "Local Legends — crown for most repeated efforts on a segment in 90 days",
+      "Relative Effort Score — gamified intensity metric",
+      "Year-in-Review — shareable personal stats that go viral annually",
+      "Route Builder with popularity heatmaps",
+      "Club leaderboards and group challenges"
+    ],
+    kpis: "MAU, activities uploaded/week, segment attempts, challenge participation, premium conversion, social interactions (kudos/comments), club membership",
+    metrics: {
+      "Registered Users": "120M+",
+      "Monthly Active": "~30M MAU",
+      "Activities/Week": "40M+",
+      "Premium Subs": "~4M paying",
+      "Revenue (2024)": "~$300M+",
+      "Countries": "195"
+    },
+    healthData: "Moderate — relies on phone GPS or connected wearable data. Heart rate data comes from paired devices (Apple Watch, Garmin, etc.), not native sensors. Good for pace, distance, elevation. Not a health data source itself but an aggregation + social layer. Training load and fitness trending require premium.",
+    relevance: "Strava is THE case study for social gamification in fitness. Segments created an entire culture of micro-competition. Key lesson: let users create the game (user-generated segments). Your app could replicate the social competition layer while owning the health data pipeline. Strava's weakness is shallow health data — that's your opportunity."
+  },
+  {
+    id: "fitbit",
+    name: "Fitbit (Google)",
+    icon: "📱",
+    color: "#00b0b9",
+    bgColor: "rgba(0,176,185,0.15)",
+    position: 30,
+    tagline: "Mainstream health + fitness tracking",
+    scores: { healthAccuracy: 7.0, gamificationLevel: 6.0, gamifiedFeatures: 7, dataDepth: 7.0 },
+    overview: "Fitbit (now owned by Google/Alphabet) is one of the OG wearable platforms. It tracks steps, heart rate, sleep, SpO2, stress (EDA sensor), and menstrual cycles. Acquired by Google in 2021 for $2.1B, it's now being integrated into the Pixel ecosystem. Fitbit pioneered the '10,000 steps' daily goal culture and made health tracking mainstream. Its gamification was ahead of its time but has grown somewhat stale compared to newer entrants.",
+    gamification: [
+      "Daily step goal with celebration animations and badges",
+      "Active Zone Minutes — gamified heart rate zone tracking",
+      "Challenges — step competitions with friends (Weekend Warrior, Workweek Hustle, etc.)",
+      "Badges & Trophies — lifetime milestones (10M steps, etc.)",
+      "Adventures — virtual hikes through real locations (Yosemite, NYC) based on step count",
+      "Sleep Animals — assigns you a sleep spirit animal based on sleep patterns",
+      "Daily Readiness Score (Premium)"
+    ],
+    kpis: "Daily active wearers, steps logged/day, Premium subscriber count, challenge participation rate, 30-day retention, Active Zone Minutes earned",
+    metrics: {
+      "Active Devices": "~30M+",
+      "Peak Users": "~110M registered",
+      "Premium Subs": "~2M (est.)",
+      "Subscription": "$9.99/mo or $79.99/yr",
+      "Acquisition": "$2.1B by Google",
+      "Daily Steps Logged": "Billions"
+    },
+    healthData: "Good for mainstream — step counting is reliable, HR monitoring is decent (PurePulse 2.0). Sleep tracking improved significantly with SpO2 integration. EDA sensor for stress management is unique. However, HRV accuracy lags behind Whoop/Oura. Google integration is expanding health data interoperability.",
+    relevance: "Fitbit proves gamification drives mass adoption — they literally changed global behavior with the step goal. But their gamification hasn't evolved much in 10 years. 'Adventures' was creative but underinvested. Lesson: gamification needs constant freshness. Your app can learn from Fitbit's early wins AND their stagnation. The social challenges format is proven but needs reinvention."
+  },
+  {
+    id: "nrc",
+    name: "Nike Run Club",
+    icon: "👟",
+    color: "#111",
+    bgColor: "rgba(255,255,255,0.08)",
+    position: 38,
+    tagline: "Guided runs with achievement culture",
+    scores: { healthAccuracy: 5.0, gamificationLevel: 7.0, gamifiedFeatures: 6, dataDepth: 4.5 },
+    overview: "Nike Run Club (NRC) is Nike's free running app that combines GPS run tracking with guided audio runs from elite coaches and athletes. It integrates deeply with Nike's brand ecosystem. The app's gamification is achievement and milestone-driven, with a strong emphasis on audio coaching that creates a 'personal trainer' feel. NRC serves as both a fitness tool and a Nike marketing/engagement engine.",
+    gamification: [
+      "Achievement badges — milestone-based (first 5K, first marathon, streak badges, monthly distance goals)",
+      "Streak rewards — consecutive day/week running streaks",
+      "Level system — based on cumulative distance (yellow, orange, green, blue, purple, black levels)",
+      "Guided Runs with audio coaching — turns runs into structured 'missions'",
+      "Monthly & weekly challenges with community participation",
+      "Post-run celebrations with shareable cards"
+    ],
+    kpis: "Monthly active runners, runs completed/month, guided run completion rate, streak length, level progression, NTC cross-usage",
+    metrics: {
+      "Downloads": "100M+",
+      "Monthly Runners": "~15M (est.)",
+      "Price": "Free (no premium)",
+      "Guided Runs": "250+ library",
+      "Integration": "Apple Watch, Garmin",
+      "Parent Co.": "Nike ($51B rev)"
+    },
+    healthData: "Basic — relies on phone GPS for distance/pace and connected heart rate monitors for HR data. No native biometric sensing. Calorie estimation is rough. Not a health data platform — it's a running engagement platform that happens to capture workout data. No sleep, HRV, or recovery metrics.",
+    relevance: "NRC proves that gamification doesn't need complex data — simple badges + audio coaching + streaks can drive massive engagement. The level system (color-coded by distance) is a brilliant long-term retention mechanic. Your app could adapt NRC's 'guided mission' format to health challenges — imagine audio-guided wellness quests backed by real biometric feedback."
+  },
+  {
+    id: "habitica",
+    name: "Habitica",
+    icon: "⚔️",
+    color: "#a78bfa",
+    bgColor: "rgba(167,139,250,0.15)",
+    position: 72,
+    tagline: "Turn your life into an RPG",
+    scores: { healthAccuracy: 1.0, gamificationLevel: 9.5, gamifiedFeatures: 12, dataDepth: 1.0 },
+    overview: "Habitica is a habit-tracking app that fully gamifies daily routines using RPG (role-playing game) mechanics. Users create a pixel-art avatar that levels up by completing real-life habits, dailies, and to-dos. Missing tasks damages your avatar's HP. It includes party quests, boss fights (collaborative), pets, mounts, and equipment. While not specifically a health app, many users track health habits (exercise, sleep, water intake, meditation) through custom habits.",
+    gamification: [
+      "Full RPG system — avatar with HP, XP, MP, equipment, and levels",
+      "4 character classes: Warrior, Mage, Healer, Rogue — each with unique abilities",
+      "Party system — collaborative boss quests where everyone's habits contribute",
+      "Pet hatching & mounting — collectible companions earned through consistency",
+      "Equipment/armor drops — earned through task completion",
+      "Guilds & social challenges",
+      "Streaks with frost protection (premium)",
+      "Seasonal events and limited-edition items",
+      "Customizable rewards — set your own 'loot'",
+      "Damage system — miss a daily and your HP drops, die and lose items",
+      "Boss fights — party defeats bosses by completing their habits",
+      "Challenge system — community-created challenge quests"
+    ],
+    kpis: "DAU, habits checked off/day, party quest participation, subscription conversion, streak length, social feature engagement, seasonal event participation",
+    metrics: {
+      "Registered Users": "4M+",
+      "Monthly Active": "~500K (est.)",
+      "Subscription": "$4.99/mo",
+      "Tasks Completed": "Billions total",
+      "Platform": "iOS, Android, Web",
+      "Revenue": "~$5-10M ARR (est.)"
+    },
+    healthData: "None — Habitica has zero biometric or health data integration. All tracking is manual/self-reported. Users manually check off habits like 'drank 8 glasses of water' or 'exercised 30 min.' No wearable integration, no sensor data, no health metrics. It's a gamification layer, not a health data platform.",
+    relevance: "Habitica is proof that deep gamification WORKS for behavior change — even without any real health data. The RPG mechanics create genuine emotional investment (users feel bad when their avatar takes damage). Key insight: the social/party system is powerful — collaborative goals where your habits affect your team create accountability. Your app could borrow the party quest mechanic and connect it to real biometric data instead of self-reporting."
+  },
+  {
+    id: "zombies",
+    name: "Zombies, Run!",
+    icon: "🧟",
+    color: "#e74c3c",
+    bgColor: "rgba(231,76,60,0.15)",
+    position: 80,
+    tagline: "Immersive running game with narrative",
+    scores: { healthAccuracy: 3.0, gamificationLevel: 9.0, gamifiedFeatures: 8, dataDepth: 2.5 },
+    overview: "Zombies, Run! is an immersive running app by Six to Start that turns every run into a zombie apocalypse mission. Players are 'Runner 5' in a post-apocalyptic world, and the narrative unfolds through audio storytelling during runs. Zombie chases trigger interval training. Players collect supplies to build their base. With 500+ missions across 12 seasons, it's the most narrative-heavy fitness app ever made, blurring the line between audio drama, video game, and running tracker.",
+    gamification: [
+      "500+ story missions with professional voice acting and sound design",
+      "Base building — collect supplies during runs to expand your virtual township",
+      "Zombie chases — audio-triggered sprints (adaptive interval training)",
+      "Supply collection — items drop at intervals during runs",
+      "Season progression — 12 seasons of ongoing story",
+      "Race missions — virtual races with story elements",
+      "Airdrop mini-game — strategic supply distribution",
+      "Side missions and supply runs"
+    ],
+    kpis: "Mission completion rate, runs per user/month, story progression depth, subscription conversion, supply collection engagement, zombie chase sprint compliance",
+    metrics: {
+      "Downloads": "10M+",
+      "Active Users": "~1M (est.)",
+      "Subscription": "$4.99/mo or $29.99/yr",
+      "Story Missions": "500+",
+      "Seasons": "12",
+      "Studio": "Six to Start"
+    },
+    healthData: "Basic — tracks run distance, pace, duration via GPS. Supports heart rate via connected wearable. No biometric sensing, no health data pipeline, no recovery/sleep/HRV. Health tracking is incidental to the gaming experience, not the core product.",
+    relevance: "Zombies, Run! proves that narrative + exercise = extremely high engagement. Players run MORE and MORE OFTEN because they want to hear the next chapter. This is the 'Netflix for fitness' model. Your app's biggest opportunity: combine Zombies, Run!'s narrative immersion with actual biometric data. Imagine story missions that adapt based on your real HRV/recovery — you can't do the hard mission unless your body is actually ready."
+  },
+  {
+    id: "superbetter",
+    name: "SuperBetter",
+    icon: "🦸",
+    color: "#f59e0b",
+    bgColor: "rgba(245,158,11,0.15)",
+    position: 65,
+    tagline: "Resilience-building through game design",
+    scores: { healthAccuracy: 2.0, gamificationLevel: 8.5, gamifiedFeatures: 7, dataDepth: 3.0 },
+    overview: "SuperBetter was created by game designer Jane McGonigal (based on her TED talk and book) to help people build resilience and overcome challenges using game psychology. It's clinically validated — an RCT at UPenn showed it reduces depression and anxiety symptoms. Users frame real-life challenges as 'epic quests,' recruit allies, battle 'bad guys' (obstacles), and activate 'power-ups' (positive micro-actions). It targets mental health, chronic pain recovery, and general resilience.",
+    gamification: [
+      "Epic quest framing — users define a personal challenge as a heroic quest",
+      "Power-Ups — small positive actions (physical, mental, emotional, social) that boost resilience meters",
+      "Bad Guys — identify and battle personal obstacles/triggers",
+      "Allies — recruit real friends as quest allies",
+      "Four resilience meters: Physical, Mental, Emotional, Social",
+      "Quest templates for specific goals (anxiety, depression, chronic pain, weight loss)",
+      "Daily quest objectives"
+    ],
+    kpis: "DAU, power-ups activated/day, quest completion rate, ally recruitment, resilience score improvement, clinically validated outcomes (PHQ-9 depression scores)",
+    metrics: {
+      "Downloads": "1M+",
+      "Clinically Validated": "Yes (UPenn RCT)",
+      "Price": "Free + IAP",
+      "Created By": "Jane McGonigal",
+      "Focus": "Mental resilience",
+      "Based On": "Positive psychology"
+    },
+    healthData: "Minimal — primarily self-reported mood and resilience metrics across four dimensions. No wearable integration or biometric data. However, it's one of the few gamified health apps with actual clinical validation (randomized controlled trial). The resilience metrics are psychologically grounded even if not physiologically measured.",
+    relevance: "SuperBetter is the gold standard for applying real game design science to health outcomes — and it has the clinical data to prove it works. The 'four resilience meters' concept could map beautifully to your app's biometric data. Imagine if Physical Resilience was driven by actual HRV/recovery data instead of self-report. This is exactly the gap your app can fill."
+  },
+  {
+    id: "samsung",
+    name: "Samsung Health",
+    icon: "🌀",
+    color: "#1e88e5",
+    bgColor: "rgba(30,136,229,0.15)",
+    position: 22,
+    tagline: "Ecosystem health hub",
+    scores: { healthAccuracy: 7.5, gamificationLevel: 4.0, gamifiedFeatures: 5, dataDepth: 7.5 },
+    overview: "Samsung Health is the default health app for Samsung's Galaxy ecosystem (phones + Galaxy Watch). It tracks steps, exercise, sleep, heart rate, body composition (via BIA on Galaxy Watch 4+), blood pressure (in select markets), and ECG. It serves as a comprehensive health hub with some gamification elements layered on top. The Together feature adds social step competitions.",
+    gamification: [
+      "Together — step challenges with friends/family with leaderboards",
+      "Achievement badges for milestones",
+      "Daily/weekly activity goals with progress rings",
+      "Group challenges (7-day step competitions)",
+      "Streak tracking for exercise consistency"
+    ],
+    kpis: "DAU, Galaxy Watch daily wear rate, Together challenge participation, health metric check frequency, sleep tracking adoption, body composition scan frequency",
+    metrics: {
+      "Monthly Active": "~60M+ (est.)",
+      "Ecosystem": "Galaxy phones + watches",
+      "Price": "Free (bundled)",
+      "BIA Sensor": "Galaxy Watch 4+",
+      "Blood Pressure": "Select markets",
+      "ECG": "Galaxy Watch 4+"
+    },
+    healthData: "Good and improving — Galaxy Watch 4+ has BIA (body composition), optical HR, ECG, and blood pressure monitoring (regulatory-dependent). Sleep tracking is solid with sleep stages. The BIA body composition is unique among mainstream wearables. Samsung is investing heavily in health sensors, making this a strong data platform. However, accuracy varies by metric and isn't as validated as Whoop/Oura.",
+    relevance: "Samsung Health shows how a massive ecosystem player approaches gamification — cautiously. Their 'Together' feature is popular but basic. The body composition sensor is a differentiator your app could integrate with. Lesson: when you're bundled (free with a device), gamification is a retention tool, not a monetization tool. Your app needs gamification for both."
+  },
+  {
+    id: "sweatcoin",
+    name: "Sweatcoin",
+    icon: "🪙",
+    color: "#ff6b35",
+    bgColor: "rgba(255,107,53,0.15)",
+    position: 55,
+    tagline: "Steps = cryptocurrency rewards",
+    scores: { healthAccuracy: 3.0, gamificationLevel: 8.0, gamifiedFeatures: 6, dataDepth: 2.0 },
+    overview: "Sweatcoin converts your daily steps into a digital currency ('sweatcoins') that can be redeemed for real products, services, and charitable donations. In 2022, they launched $SWEAT — an actual cryptocurrency on the NEAR blockchain. The core loop is simple: walk more, earn more, spend or invest. It's one of the largest move-to-earn apps globally and has driven genuine behavior change in clinical studies (BMJ study showed 20% increase in daily steps).",
+    gamification: [
+      "Step-to-coin conversion — every 1,000 steps ≈ 1 sweatcoin",
+      "Marketplace — redeem coins for products, experiences, donations",
+      "$SWEAT crypto token — actual blockchain asset earned by walking",
+      "Daily rewards — bonus coins for hitting targets",
+      "Referral bonuses — invite friends for bonus coins",
+      "Premium tiers — 2x earning multiplier for subscribers"
+    ],
+    kpis: "DAU, daily steps per user, coins earned/redeemed, marketplace transaction volume, $SWEAT token value, referral rate, premium conversion",
+    metrics: {
+      "Registered Users": "120M+",
+      "Monthly Active": "~10M (est.)",
+      "Steps Tracked": "20T+ total",
+      "$SWEAT Token": "Live on NEAR",
+      "Countries": "60+",
+      "Revenue Model": "Ads + Premium"
+    },
+    healthData: "Very basic — only tracks step count via phone accelerometer. No heart rate, sleep, HRV, or any biometric data. Uses an algorithm to verify 'outdoor steps' and prevent fraud. The health value is purely in the behavioral incentive to walk more, not in data quality. BMJ-published study confirmed it increases physical activity by ~20%.",
+    relevance: "Sweatcoin proves that extrinsic rewards (earn money for walking) drive massive initial adoption but face long-term retention challenges. The crypto pivot is interesting but volatile. Key lesson for your app: financial/token incentives are powerful for acquisition but you need intrinsic motivation (fun, social, narrative) for retention. Consider a hybrid: token rewards for onboarding, game mechanics for retention."
+  },
+  {
+    id: "finch",
+    name: "Finch",
+    icon: "🐦",
+    color: "#86efac",
+    bgColor: "rgba(134,239,172,0.15)",
+    position: 60,
+    tagline: "Self-care pet companion",
+    scores: { healthAccuracy: 1.5, gamificationLevel: 8.0, gamifiedFeatures: 9, dataDepth: 2.0 },
+    overview: "Finch is a self-care app where you nurture a virtual bird pet by completing wellness activities (journaling, breathing exercises, stretching, gratitude, hydration tracking). As you care for yourself, your Finch grows, explores, and collects items. It combines Tamagotchi-style virtual pet mechanics with evidence-based wellbeing practices. Hugely popular with Gen Z — it's the 'cozy game' approach to mental health.",
+    gamification: [
+      "Virtual pet — your Finch bird grows and evolves based on your self-care activities",
+      "Adventures — send your Finch on journeys that bring back items and memories",
+      "Tree of Life — grow a shared forest with friends",
+      "Outfit customization — dress your Finch with earned items",
+      "Emotion check-ins with mood tracking",
+      "Goal stones — set intentions that your Finch carries",
+      "Reflections — journaling prompts tied to adventures",
+      "Friend connections — visit friends' Finches",
+      "Seasonal events and limited-edition items"
+    ],
+    kpis: "DAU, self-care activities completed/day, mood check-in rate, friend connections, subscription conversion, pet engagement (outfit changes, adventure sends), journal completion rate",
+    metrics: {
+      "Downloads": "10M+",
+      "Active Users": "~3M (est.)",
+      "Subscription": "$4.99/mo or $39.99/yr",
+      "Rating": "4.8★ (App Store)",
+      "Target Demo": "Gen Z / Millennials",
+      "Founded": "2021"
+    },
+    healthData: "Very minimal — mood self-reports, sleep quality (self-reported), step count via Apple Health/Google Fit integration. No biometric data, no wearable integration for health metrics. The 'health' value is in behavioral nudging toward positive habits (breathing, journaling, movement) rather than data accuracy.",
+    relevance: "Finch is a masterclass in emotional engagement and 'cozy gamification.' It proves that health apps don't need hardcore game mechanics — warmth, nurturing, and gentle nudges can drive extremely high engagement (4.8★ with millions of users). Your app could learn from Finch's emotional design: make the avatar/companion feel alive and lovable. The pet mechanic creates guilt-free accountability — you don't want to let your Finch down."
+  },
+  {
+    id: "noom",
+    name: "Noom",
+    icon: "🎯",
+    color: "#f97316",
+    bgColor: "rgba(249,115,22,0.15)",
+    position: 40,
+    tagline: "Psychology-based weight management",
+    scores: { healthAccuracy: 5.5, gamificationLevel: 6.5, gamifiedFeatures: 6, dataDepth: 5.0 },
+    overview: "Noom is a weight management app built on cognitive behavioral therapy (CBT) principles. It uses daily micro-lessons, food logging with a color-coded system (green/yellow/red foods), and human coaching to drive behavior change. The app gamifies the educational journey — users progress through a 'curriculum' of psychology lessons. Noom went viral and hit unicorn status ($3.7B) by positioning itself as 'not a diet app' but a psychology program.",
+    gamification: [
+      "Color-coded food system — green/yellow/red categorization turns food logging into a game of 'staying green'",
+      "Daily lesson curriculum with progress tracking — like 'leveling up' your psychology knowledge",
+      "Weight graph with goal visualization",
+      "Group coaching with community challenges",
+      "Streaks for daily logging",
+      "Quiz-based lessons with instant feedback"
+    ],
+    kpis: "Daily lesson completion, food log adherence, weight loss % over 16 weeks, coach interaction rate, subscription retention, group engagement",
+    metrics: {
+      "Revenue (2024)": "~$600M+",
+      "Subscribers": "~3-4M paying",
+      "Subscription": "$32-70/mo",
+      "Valuation": "$3.7B (2021)",
+      "Employees": "~2,000",
+      "Clinical Evidence": "Multiple RCTs"
+    },
+    healthData: "Moderate — primarily food logging (user-reported) with a large food database, weight tracking (scale integration or manual), and step counting via phone. No wearable biometrics. The 'health data' is really behavioral data (what you eat, your weight trend, your lesson progress). Clinically validated for weight loss outcomes in published studies.",
+    relevance: "Noom shows that gamifying education (not just activity) drives major business outcomes — $600M+ revenue. The color-coded food system is genius: it turns a complex nutritional decision into a simple game. Your app could apply similar simplification: turn complex biometric data into simple, color-coded feedback that feels like a game mechanic rather than a medical dashboard."
+  },
+  {
+    id: "pokemon_go",
+    name: "Pokémon GO",
+    icon: "🎮",
+    color: "#fbbf24",
+    bgColor: "rgba(251,191,36,0.15)",
+    position: 88,
+    tagline: "AR gaming that gets you moving",
+    scores: { healthAccuracy: 1.0, gamificationLevel: 10.0, gamifiedFeatures: 15, dataDepth: 1.5 },
+    overview: "Pokémon GO by Niantic is an augmented reality mobile game that requires physical movement to play. Players walk to find and catch Pokémon, visit PokéStops, battle in Gyms, and participate in community events. While primarily a game, it has become one of the most effective 'stealth health' apps ever — studies show it increased physical activity by 25% in sedentary populations. It has generated over $6 billion in revenue since 2016.",
+    gamification: [
+      "Pokédex completion — 'catch em all' collection mechanic",
+      "XP and level system (1-50) with increasing challenges",
+      "Gym battles and raid bosses — cooperative multiplayer",
+      "Community Days — monthly live events",
+      "Egg hatching — walk 2/5/7/10/12km to hatch Pokémon",
+      "Buddy system — walk with your favorite Pokémon",
+      "PvP battles — competitive leagues with rankings",
+      "Field Research tasks — daily quests",
+      "Special Research — long-form quest chains",
+      "Trading and friendship leveling",
+      "Seasonal events and limited-time Pokémon",
+      "AR photography",
+      "Team affiliation (Valor/Mystic/Instinct)",
+      "Weekly fitness reports (Adventure Sync)",
+      "Mega Evolution — earned through walking"
+    ],
+    kpis: "DAU, revenue/ARPU, walk distance/user, raids completed, Community Day participation, PvP battles, retention (D7/D30/D90)",
+    metrics: {
+      "Lifetime Revenue": "$6B+",
+      "Peak MAU": "150M (2016)",
+      "Current MAU": "~80M (est.)",
+      "Walks Logged": "Billions of km",
+      "Revenue (2024)": "~$600-700M",
+      "Developer": "Niantic"
+    },
+    healthData: "Almost none — tracks steps and distance via Adventure Sync (phone pedometer/Apple Health/Google Fit). No health metrics. But Stanford/Microsoft research showed it increased physical activity by 25% in previously sedentary users, reduced sedentary time, and improved mood. The health impact is real even though it's not measured.",
+    relevance: "Pokémon GO is the ultimate proof that games drive health behavior at massive scale — without ever calling itself a health app. 80M people walk more because of cartoon monsters. The lesson is profound: don't lead with health, lead with fun. Your app's #1 competitor for attention isn't another health app — it's entertainment. If you can make biometric-driven gameplay as compelling as catching Pokémon, you win."
+  },
+  {
+    id: "apple_health",
+    name: "Apple Health / Fitness+",
+    icon: "🍎",
+    color: "#ff2d55",
+    bgColor: "rgba(255,45,85,0.15)",
+    position: 20,
+    tagline: "Apple's integrated health ecosystem",
+    scores: { healthAccuracy: 8.5, gamificationLevel: 5.0, gamifiedFeatures: 5, dataDepth: 9.0 },
+    overview: "Apple Health is the health data hub on iOS, aggregating data from Apple Watch and 300+ third-party apps. Apple Fitness+ is the subscription workout service. Together, they form Apple's health ecosystem. Apple Watch tracks heart rate, ECG, blood oxygen, temperature, crash detection, fall detection, and noise levels. The Activity Rings (Move, Exercise, Stand) are one of the most recognizable gamification designs in tech history.",
+    gamification: [
+      "Activity Rings — Move, Exercise, Stand rings with daily close goals (iconic design)",
+      "Monthly Challenges — personalized fitness challenges",
+      "Achievement badges — milestones, streaks, personal records",
+      "Sharing — compete with friends on ring closure",
+      "Streak tracking — consecutive ring closures",
+    ],
+    kpis: "Apple Watch daily wear rate, ring closure rate, Fitness+ subscriber retention, Health app daily opens, third-party app connections",
+    metrics: {
+      "Apple Watch Users": "~150M+ active",
+      "Fitness+ Subs": "~3-5M (est.)",
+      "Fitness+ Price": "$9.99/mo",
+      "Health Data Points": "150+ categories",
+      "Third-party Apps": "300+ connected",
+      "Revenue": "Part of $85B Services"
+    },
+    healthData: "Very strong — Apple Watch Series 9/Ultra 2 includes optical HR (3rd gen), ECG, SpO2, skin temperature, accelerometer, gyroscope. FDA-cleared for ECG and irregular rhythm notification. Apple Health aggregates data from hundreds of sources. The data pipeline is arguably the most comprehensive consumer health platform. HealthKit API enables deep third-party integration.",
+    relevance: "Activity Rings are the most successful health gamification ever shipped — simple, visual, daily. But Apple deliberately keeps gamification subtle; they don't want to be seen as a 'game.' Your app can integrate deeply with Apple Health via HealthKit and add the rich gamification layer that Apple intentionally holds back on. Position as the 'game layer on top of Apple Health data.'"
+  },
+  {
+    id: "stepn",
+    name: "STEPN",
+    icon: "👟",
+    color: "#2dd4bf",
+    bgColor: "rgba(45,212,191,0.15)",
+    position: 82,
+    tagline: "Move-to-earn Web3 fitness",
+    scores: { healthAccuracy: 1.5, gamificationLevel: 9.0, gamifiedFeatures: 8, dataDepth: 1.0 },
+    overview: "STEPN is a Web3 move-to-earn app where users buy NFT sneakers and earn cryptocurrency (GST/GMT tokens) by walking, jogging, or running. Each NFT sneaker has attributes (Efficiency, Luck, Comfort, Resilience) that determine earnings. It peaked in early 2022 with massive hype, then crashed with the crypto market. It represents the extreme case of extrinsic financial incentives for physical activity — and both the promise and peril of that model.",
+    gamification: [
+      "NFT sneaker system with attributes and levels",
+      "Token earning (GST) based on movement + sneaker quality",
+      "Sneaker upgrading and gem socketing — RPG-style enhancement",
+      "Mystery box drops during runs",
+      "Sneaker breeding/minting — create new NFT sneakers",
+      "Energy system — limits daily earning (creates scarcity)",
+      "Leaderboards and marathons",
+      "Multiple realms (Solana, BNB, Ethereum)"
+    ],
+    kpis: "DAU, daily active earners, GST/GMT token price, sneaker floor price, new wallet creation, average distance/day, token burn rate",
+    metrics: {
+      "Peak DAU": "~700K (Q2 2022)",
+      "Current DAU": "~50-100K (est.)",
+      "Peak Revenue": "$100M+/mo (2022)",
+      "NFT Sneaker Sales": "$Billions total",
+      "Token": "GST + GMT",
+      "Status": "Rebuilding post-crash"
+    },
+    healthData: "Extremely basic — GPS-based step/distance tracking only. Anti-cheat system to verify movement is real. No biometric data whatsoever. The entire product is a financial game layered on top of basic movement verification. Health is not even a secondary priority — it's an incidental byproduct.",
+    relevance: "STEPN is a cautionary tale AND a case study. The cautionary part: pure financial incentives create mercenaries, not loyal users. When token price crashed, DAU dropped 90%+. The useful part: the NFT sneaker system with RPG-like attributes is genuinely engaging game design. Your app could create 'virtual health equipment' that upgrades based on real health metrics — without the volatile crypto dependency. Use the game design, skip the ponzinomics."
+  },
+  {
+    id: "garmin",
+    name: "Garmin Connect",
+    icon: "📍",
+    color: "#00a1d6",
+    bgColor: "rgba(0,161,214,0.15)",
+    position: 18,
+    tagline: "Serious athlete data platform",
+    scores: { healthAccuracy: 8.8, gamificationLevel: 3.5, gamifiedFeatures: 4, dataDepth: 9.0 },
+    overview: "Garmin Connect is the companion app for Garmin's wearable devices (Forerunner, Fenix, Venu, etc.). Known for best-in-class GPS accuracy and battery life, Garmin targets serious athletes and outdoor enthusiasts. The app provides deep training analytics, Body Battery energy monitoring, Training Readiness, and comprehensive health stats. Garmin's approach is data-first with minimal gamification — function over flash.",
+    gamification: [
+      "Badges — activity milestones and personal records",
+      "Challenges — step/distance/activity competitions with Garmin users",
+      "Body Battery — energy score (0-100) that gamifies energy management",
+      "Insights — AI-generated performance insights and tips"
+    ],
+    kpis: "Device daily wear rate, Connect IQ app downloads, training load adherence, Body Battery check frequency, challenge participation, data sync regularity",
+    metrics: {
+      "Revenue (Fitness)": "~$1.5B segment",
+      "Devices Sold": "~20M/year",
+      "Connect Users": "~30M+ (est.)",
+      "Price Range": "$200-$1,000+ devices",
+      "Connect IQ Apps": "4,000+",
+      "Battery Life": "Up to 37 days"
+    },
+    healthData: "Excellent — multi-band GPS (best in class for outdoor accuracy), Elevate V5 optical HR sensor, SpO2, advanced sleep staging, HRV, stress tracking, respiration, Body Battery, and Training Readiness. Garmin's Firstbeat analytics engine provides VO2 max estimation, training load/effect analysis, and recovery advisor. Some models include ECG. Garmin excels at athletic performance data.",
+    relevance: "Garmin represents the 'data purist' end of the spectrum — incredible sensors with minimal gamification. Their Body Battery feature is essentially gamification in disguise (an energy meter!), and it's one of their most popular features. This validates your thesis: even data-focused users respond to game-like abstractions. Your app could serve as the 'fun layer' for Garmin users who want more engagement from their data."
+  }
+];
+
+// Sort by position for consistent rendering
+const sortedApps = [...apps].sort((a, b) => a.position - b.position);
+
+function getPositionColor(pos) {
+  if (pos < 33) return 'var(--health)';
+  if (pos > 66) return 'var(--game)';
+  return 'var(--mid)';
+}
+
+function getPositionLabel(pos) {
+  if (pos < 20) return 'Health-Focused';
+  if (pos < 35) return 'Health-Leaning';
+  if (pos < 50) return 'Balanced';
+  if (pos < 65) return 'Game-Leaning';
+  if (pos < 80) return 'Game-Focused';
+  return 'Pure Game';
+}
+
+function renderSpectrum() {
+  const container = document.getElementById('spectrumDots');
+  container.innerHTML = '';
+  sortedApps.forEach(app => {
+    const dot = document.createElement('div');
+    dot.className = 'app-dot';
+    dot.dataset.id = app.id;
+    dot.style.left = app.position + '%';
+    dot.innerHTML = `
+      <div class="dot" style="background:${app.bgColor}; border-color: ${app.color}40">${app.icon}</div>
+      <div class="name">${app.name}</div>
+    `;
+    dot.addEventListener('click', () => openModal(app.id));
+    container.appendChild(dot);
+  });
+}
+
+function renderCards() {
+  const grid = document.getElementById('cardsGrid');
+  grid.innerHTML = '';
+  sortedApps.forEach(app => {
+    const card = document.createElement('div');
+    card.className = 'app-card';
+    card.dataset.id = app.id;
+    card.style.cssText = `--card-color: ${app.color}`;
+    card.innerHTML = `
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${app.color};border-radius:12px 12px 0 0;opacity:0.6"></div>
+      <div class="card-header">
+        <div class="card-icon" style="background:${app.bgColor}">${app.icon}</div>
+        <div class="card-header-text">
+          <h3>${app.name}</h3>
+          <div class="tagline">${app.tagline}</div>
+        </div>
+      </div>
+      <div class="card-position">
+        <div class="position-bar">
+          <div style="position:absolute;top:0;left:0;height:100%;width:${app.position}%;border-radius:2px;background:linear-gradient(90deg,var(--health),var(--mid),var(--game))"></div>
+          <div style="position:absolute;top:-3px;left:${app.position}%;width:10px;height:10px;border-radius:50%;background:#fff;transform:translateX(-50%);box-shadow:0 0 6px rgba(167,139,250,0.5)"></div>
+        </div>
+        <span class="position-label">${app.position}/100</span>
+      </div>
+      <div class="card-scores">
+        ${renderScoreItem('Health Accuracy', app.scores.healthAccuracy, 10, 'var(--health)')}
+        ${renderScoreItem('Gamification', app.scores.gamificationLevel, 10, 'var(--game)')}
+        ${renderScoreItem('# Features', app.scores.gamifiedFeatures, 15, 'var(--mid)')}
+        ${renderScoreItem('Data Depth', app.scores.dataDepth, 10, '#60a5fa')}
+      </div>
+      <div class="card-tap-hint">Tap for full analysis →</div>
+    `;
+    card.addEventListener('click', () => openModal(app.id));
+    grid.appendChild(card);
+  });
+}
+
+function renderScoreItem(label, value, max, color) {
+  const pct = (value / max) * 100;
+  return `
+    <div class="score-item">
+      <div class="label">${label}</div>
+      <div class="score-bar-wrap">
+        <div class="score-bar"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <span class="score-val" style="color:${color}">${value}</span>
+      </div>
+    </div>`;
+}
+
+function openModal(id) {
+  const app = apps.find(a => a.id === id);
+  if (!app) return;
+
+  document.querySelectorAll('.app-dot').forEach(d => d.classList.toggle('active', d.dataset.id === id));
+  document.querySelectorAll('.app-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+
+  const modal = document.getElementById('modalContent');
+  const metricsHtml = Object.entries(app.metrics).map(([k,v]) => `
+    <div class="metric-item">
+      <div class="metric-label">${k}</div>
+      <div class="metric-value">${v}</div>
+    </div>`).join('');
+
+  const gamifHtml = app.gamification.map(g => `<li>${g}</li>`).join('');
+
+  modal.innerHTML = `
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-header">
+      <div class="modal-icon" style="background:${app.bgColor}">${app.icon}</div>
+      <div class="modal-header-text">
+        <h2>${app.name}</h2>
+        <div class="sub">${app.tagline}</div>
+      </div>
+    </div>
+
+    <div class="modal-spectrum">
+      <div class="modal-spectrum-label">Position on Spectrum</div>
+      <div class="modal-spectrum-bar">
+        <div class="modal-spectrum-pin" style="left:${app.position}%"></div>
+      </div>
+      <div class="modal-spectrum-ends">
+        <span>Pure Health</span>
+        <span>${getPositionLabel(app.position)} — ${app.position}/100</span>
+        <span>Pure Game</span>
+      </div>
+    </div>
+
+    <div class="modal-scores">
+      <div class="modal-score-card"><div class="num" style="color:var(--health)">${app.scores.healthAccuracy}</div><div class="lbl">Health Accuracy</div></div>
+      <div class="modal-score-card"><div class="num" style="color:var(--game)">${app.scores.gamificationLevel}</div><div class="lbl">Gamification Level</div></div>
+      <div class="modal-score-card"><div class="num" style="color:var(--mid)">${app.scores.gamifiedFeatures}</div><div class="lbl">Gamified Features</div></div>
+      <div class="modal-score-card"><div class="num" style="color:#60a5fa">${app.scores.dataDepth}</div><div class="lbl">Data Depth</div></div>
+    </div>
+
+    <div class="modal-section">
+      <h4>Overview</h4>
+      <p>${app.overview}</p>
+    </div>
+
+    <div class="modal-section">
+      <h4>Health Data Quality</h4>
+      <p>${app.healthData}</p>
+    </div>
+
+    <div class="modal-section">
+      <h4>Gamification Features</h4>
+      <ul>${gamifHtml}</ul>
+    </div>
+
+    <div class="modal-section">
+      <h4>Key KPIs</h4>
+      <p>${app.kpis}</p>
+    </div>
+
+    <div class="modal-section">
+      <h4>Metrics & Numbers</h4>
+      <div class="metric-grid">${metricsHtml}</div>
+    </div>
+
+    <div class="relevance-box">
+      <h4>⚡ Relevance to Your App</h4>
+      <p>${app.relevance}</p>
+    </div>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  document.querySelectorAll('.app-dot, .app-card').forEach(el => el.classList.remove('active'));
+}
+
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+renderSpectrum();
+renderCards();
+</script>
+</body>
+</html>
